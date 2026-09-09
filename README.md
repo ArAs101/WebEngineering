@@ -51,6 +51,17 @@ Split the code into separate script files and use ES modules (`import`/`export`)
 
 **Theory question:** How does an ES module differ from a classic script with respect to scope, strict mode, loading, and bindings? Explain why the module boundaries you chose make the application easier to maintain.
 
+**Answer:**
+ 
+> An ES module has its own top-level scope, while classic scripts can share variables and functions through the global scope. This allows for fine-grained control over what can be shared with other scripts and HTML documents by making use of the ```import```and ```export``` keywords.
+> 
+> Strict mode is activated on ES modules by default, while it can be explicitly invoked on regular scripts by typing ```"use strict";``` before any other statements. This mode eliminates some JavaScript silent errors by changing them to throw errors and can sometimes make code written in it run faster than identical code that's not strict mode.
+> 
+> ES modules are deferred by default (executes after the HTML document has been parsed), while classic scripts interrupt the document parsing process and make the browser execute them immediately when discovered. Fortunately, classic scripts can be deferred, too by adding the ```defer```attribute to the ```<script src="...">``` invocation.
+>
+> ES modules provide explicit ```import```and ```export``` bindings to other scripts and HTML documents. Imports are live, read-only views of exported bindings. An importer can't reassign the imported name, but it observes any reassignment performed within the exporting module.
+>
+> I divided the given JavaScript code into five modules according to their responsibilities. ```main.js``` acts as the entry point and initialises the individual features of the application. ```search.js``` contains the search and highlighting functionality, while ```comments.js``` handles showing, hiding, and adding comments. ```bearService.js``` is concerned with retrieving and processing bear data from the Wikipedia API, and ```bearView.js``` is in charge of displaying that data in the DOM. These boundaries assign each module a single concern, which means that changes in one module don't automatically affect the other components of the application as they're more loosely coupled. The imports also make dependencies explicit instead of relying on shared global state. The dependency structure is kept one-directional, which avoids circular dependencies and makes the flow of the application easier to understand.
 #### Task 2: Correct the application behavior
 
 Fix the semantic and functional issues according to the app requirements. Use appropriate DOM queries and event handling, and ensure the bear list has the same order and number of entries as the source page.
@@ -77,12 +88,13 @@ Find and eliminate the remaining bad coding practices. Consider scope, accidenta
 
 > **What bad coding practices did you find? Why is it a bad practice and how did you fix it?**
 > 
-> _Present your findings here..._
->
-> ```js
-> console.log('Make use of markdown codesnippets to show and explain good/bad practices!')
-> ```
-
+> Task 1:
+> 
+> The ```<script>``` block at the end of index.html had to be replaced with a ```<script>``` call at the top of the file inside the ```<head>``` element. Scripts to be integrated should always be called at the beginning of the .html file because otherwise, it wouldn't be clear what scripts are to be referenced in the long run and chaos would ensue.
+> 
+>Task 2:
+> 
+> ..
 
 ## 2. Dependency- and Build Management Playground
 Build the application with ``npm`` and a build and a dependency management tool of your choice (e.g. [Vite](https://vitejs.dev/), [Webpack](https://webpack.js.org/), or others). 
