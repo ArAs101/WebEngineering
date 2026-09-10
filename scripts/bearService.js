@@ -4,7 +4,7 @@ export function initBearData() {
     // Fetching bear data
     var baseUrl = "https://en.wikipedia.org/w/api.php";
     var title = "List_of_ursids";
-    var placeholderImage = "media/bear-placeholder.jpg";
+    var placeholderImage = "media/bear_placeholder.jpg";
 
     var params = {
         action: "parse",
