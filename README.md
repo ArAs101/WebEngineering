@@ -68,6 +68,15 @@ Fix the semantic and functional issues according to the app requirements. Use ap
 
 **Theory question:** Describe event propagation (capturing, target, and bubbling). Where could event delegation be useful in this application, and what trade-off would it introduce?
 
+**Answer:**
+ 
+> In general, event propagation defines how an event travels through the DOM tree and the execution order of its event listeners. In the first phase called "capturing phase", events propagate from the outermost ```window``` element at the top down through the DOM tree to the target node (button, hyperlink, etc.) that was interacted with. All event listeners registered with the ```addEventListener()``` method and its third optional parameter ```useCapture``` explicitly set to ```true``` in this hierarchy will be triggered according to their position in it, with those using the default ```false``` option being skipped.
+>
+> In the following "target phase", the event arrives at the element that originally triggered it. This element can be accessed through the ```event.target``` property.
+> 
+> In the final "bubbling phase", events bubble back up the DOM tree in the reverse order. Event listeners registered with the default ```useCapture``` value of ```false``` are executed during this phase.
+> 
+> Event delegation is a pattern used to handle events efficiently by attaching a single event listener to a parent element instead of adding listeners to multiple similar child elements. A useful application of event delegation could be the dynamic posting of comments. Instead of registering an event listener for every posted comment, a single registered event listener at the ```commentWrapper``` element can handle events for an arbitrary number of subordinate comments, which helps keep the DOM tree relatively simple as more comments are posted. However, event delegation works only if event bubbling is enabled (= the parameter ```useCapture```of the ```addEventListener()``` method is set to ```false```). Moreover, the event handler becomes more complex because it has to check which child element triggered the event, potentially resulting in reduced performance.
 #### Task 3: Make failures explicit
 
 Add error handling with `try`/`catch` and show useful, user-facing error messages. Check whether each image can be loaded and render a placeholder when it cannot. Do not represent a failed request as valid empty data.

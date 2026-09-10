@@ -4,6 +4,7 @@ export function initBearData() {
     // Fetching bear data
     var baseUrl = "https://en.wikipedia.org/w/api.php";
     var title = "List_of_ursids";
+    var placeholderImage = "media/bear-placeholder.jpg";
 
     var params = {
         action: "parse",
@@ -35,39 +36,56 @@ export function initBearData() {
     }
 
     function extractBears(wikitext) {
-        var speciesTables = wikitext.split('{{Species table/end}}');
-        var bears = [];
-        speciesTables.forEach(function(table) {
-          var rows = table.split('{{Species table/row');
-          rows.forEach(function(row) {
+      var rows = wikitext.split('{{Species table/row').slice(1); // Skip the first part before the first row
+          var bearPromises = rows.map(function(row) {
             var nameMatch = row.match(/\|name=\[\[(.*?)\]\]/);
-            var binomialMatch = row.match(/\|binomial=(.*?)\n/);
-            var imageMatch = row.match(/\|image=(.*?)\n/);
+            var binomialMatch = row.match(/\|binomial=([^|\n]*)/);
+            var imageMatch = row.match(/\|image=([^|\n]*)/);
+            var rangeMatch = row.match(/\|range=([^|\n]*)/);
 
-            if (nameMatch && binomialMatch && imageMatch) {
-              var fileName = imageMatch[1].trim().replace('File:', '');
-
-              fetchImageUrl(fileName).then(function(imageUrl) {
-                var bear = {
-                  name: nameMatch[1],
-                  binomial: binomialMatch[1],
-                  image: imageUrl,
-                  range: "TODO extract correct range"
+            if (nameMatch && binomialMatch && rangeMatch) {
+              var bear = {
+                  name: nameMatch[1].trim(),
+                  binomial: binomialMatch[1].trim(),
+                  range: rangeMatch[1].trim()
                 };
-                bears.push(bear);
 
-                if (bears.length === rows.length) {
-                  renderBears(bears);
-                }
-              });
+              if (imageMatch) {
+                var fileName = imageMatch[1].trim().replace('File:', '');
+
+                return fetchImageUrl(fileName)
+                .then(function(imageUrl) {
+                  bear.image = imageUrl;
+                  return bear;
+                })
+                .catch(function() {
+                  bear.image = placeholderImage;
+                  return bear;
+                });
+              };
+              bear.image = placeholderImage;
+              return Promise.resolve(bear);
             }
+            return Promise.resolve(null);
           });
-        });
-      }
+
+          return Promise.all(bearPromises)
+          .then(function(bears) {
+            return bears.filter(function(bear) {
+              return bear !== null;
+            });
+          });
+        };
+      
 
       fetch(baseUrl + "?" + new URLSearchParams(params).toString())
-        .then(function(res) { return res.json(); })
+        .then(function(res) {
+          return res.json();
+        })
         .then(function(data) {
-          extractBears(data.parse.wikitext['*']);
+          return extractBears(data.parse.wikitext['*']);
+        })
+        .then(function(bears) {
+          renderBears(bears);
         });
-}
+}    

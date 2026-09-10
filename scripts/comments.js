@@ -5,16 +5,15 @@ export function initComments() {
 
     commentWrapper.style.display = 'none';
 
-    showHideBtn.onclick = function() {
-        var showHideText = showHideBtn.textContent;
-        if (showHideText === 'Show comment') { 
+    showHideBtn.addEventListener('click', function() {
+        if (commentWrapper.style.display === 'none') { 
           showHideBtn.textContent = 'Hide comments';
           commentWrapper.style.display = 'block';
         } else {
           showHideBtn.textContent = 'Show comments';
           commentWrapper.style.display = 'none';
         }
-    };
+    });
 
     // Comment form stuff
     var form = document.querySelector('.comment-form');
@@ -22,16 +21,20 @@ export function initComments() {
     var commentField = document.querySelector('#comment');
     var list = document.querySelector('.comment-container');
 
-    form.onsubmit = function(e) {
+    form.addEventListener('submit', function(e) {
         e.preventDefault();
 
         var listItem = document.createElement('li');
         var namePara = document.createElement('p');
         var commentPara = document.createElement('p');
-        var nameValue = nameField.valeu;
-        var commentValue = commentField.value;
+        var nameValue = nameField.value.trim();
+        var commentValue = commentField.value.trim();
+        if (!nameValue || !commentValue) {
+            alert('Please fill in both fields with proper text.');
+            return;
+        }
 
-        namePara.textContnet = nameValue;
+        namePara.textContent = nameValue;
         commentPara.textContent = commentValue;
 
         console.log(nameValue);
@@ -42,5 +45,5 @@ export function initComments() {
 
         nameField.value = '';
         commentField.value = '';
-    }
+    });
 }
