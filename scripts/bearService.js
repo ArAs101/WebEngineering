@@ -1,91 +1,137 @@
-import { renderBears } from './bearView.js';
+import { renderBears, renderBearError } from './bearView.js';
 
-export function initBearData() {
-    // Fetching bear data
-    var baseUrl = "https://en.wikipedia.org/w/api.php";
-    var title = "List_of_ursids";
-    var placeholderImage = "media/bear_placeholder.jpg";
+export async function initBearData() {
+  // Fetching bear data
+  var baseUrl = "http://en.wikipedia.org/w/api.php";
+  var title = "List_of_ursids";
+  var placeholderImage = "media/bear_placeholder.png";
 
-    var params = {
-        action: "parse",
-        page: title,
-        prop: "wikitext",
-        section: 3,
-        format: "json",
-        origin: "*"
+  var params = {
+    action: "parse",
+    page: title,
+    prop: "wikitext",
+    section: 3,
+    format: "json",
+    origin: "*"
+  };
+
+  async function fetchImageUrl(fileName) {
+    var imageParams = {
+      action: "query",
+      titles: "File:" + fileName,
+      prop: "imageinfo",
+      iiprop: "url",
+      format: "json",
+      origin: "*"
     };
 
-    function fetchImageUrl(fileName) {
-        var imageParams = {
-          action: "query",
-          titles: "File:" + fileName,
-          prop: "imageinfo",
-          iiprop: "url",
-          format: "json",
-          origin: "*"
-        };
+    var url = baseUrl + "?" + new URLSearchParams(imageParams).toString();
+    var response = await fetch(url);
 
-        var url = baseUrl + "?" + new URLSearchParams(imageParams).toString();
-        return fetch(url).then(function(res) {
-          return res.json();
-        }).then(function(data) {
-          var pages = data.query.pages;
-          var page = Object.values(pages)[0];
-          return page.imageinfo[0].url;
-        });
+    if (!response.ok) {
+      throw new Error("Image request failed with status " + response.status);
     }
 
-    function extractBears(wikitext) {
-      var rows = wikitext.split('{{Species table/row').slice(1); // Skip the first part before the first row
-          var bearPromises = rows.map(function(row) {
-            var nameMatch = row.match(/\|name=\[\[(.*?)\]\]/);
-            var binomialMatch = row.match(/\|binomial=([^|\n]*)/);
-            var imageMatch = row.match(/\|image=([^|\n]*)/);
-            var rangeMatch = row.match(/\|range=([^|\n]*)/);
+    var data = await response.json();
+    var pages = data.query?.pages;
+    var page = pages ? Object.values(pages)[0] : null;
 
-            if (nameMatch && binomialMatch && rangeMatch) {
-              var bear = {
-                  name: nameMatch[1].trim(),
-                  binomial: binomialMatch[1].trim(),
-                  range: rangeMatch[1].trim()
-                };
+    if (!page?.imageinfo?.[0]?.url) {
+      throw new Error("No image URL returned for " + fileName);
+    }
 
-              if (imageMatch) {
-                var fileName = imageMatch[1].trim().replace('File:', '');
+    return page.imageinfo[0].url;
+  }
 
-                return fetchImageUrl(fileName)
-                .then(function(imageUrl) {
-                  bear.image = imageUrl;
-                  return bear;
-                })
-                .catch(function() {
-                  bear.image = placeholderImage;
-                  return bear;
-                });
-              };
-              bear.image = placeholderImage;
-              return Promise.resolve(bear);
-            }
-            return Promise.resolve(null);
-          });
+  function canLoadImage(url) {
+    return new Promise(function (resolve) {
+      var image = new Image();
 
-          return Promise.all(bearPromises)
-          .then(function(bears) {
-            return bears.filter(function(bear) {
-              return bear !== null;
-            });
-          });
-        };
-      
+      image.onload = function () {
+        resolve(true);
+      };
 
-      fetch(baseUrl + "?" + new URLSearchParams(params).toString())
-        .then(function(res) {
-          return res.json();
-        })
-        .then(function(data) {
-          return extractBears(data.parse.wikitext['*']);
-        })
-        .then(function(bears) {
-          renderBears(bears);
-        });
-}    
+      image.onerror = function () {
+        resolve(false);
+      };
+
+      image.src = url;
+    });
+  }
+
+  async function getImageOrPlaceholder(imageMatch) {
+    if (!imageMatch) {
+      return placeholderImage;
+    }
+
+    var fileName = imageMatch[1].trim().replace('File:', '');
+
+    try {
+      var imageUrl = await fetchImageUrl(fileName);
+      var imageCanBeLoaded = await canLoadImage(imageUrl);
+      if (!imageCanBeLoaded) {
+        throw new Error("Image cannot be loaded: " + imageUrl);
+      }
+      return imageUrl;
+    } catch (error) {
+      console.warn("Could not load image for " + fileName + ". Using placeholder.", error);
+      return placeholderImage;
+    }
+  }
+
+  async function extractBears(wikitext) {
+    var rows = wikitext.split('{{Species table/row').slice(1);
+
+    if (rows.length === 0) {
+      throw new Error("No bear entries found in Wikipedia data.");
+    }
+
+    var bearPromises = rows.map(async function (row) {
+      var nameMatch = row.match(/\|name=\[\[(.*?)\]\]/);
+      var binomialMatch = row.match(/\|binomial=([^|\n]*)/);
+      var imageMatch = row.match(/\|image=([^|\n]*)/);
+      var rangeMatch = row.match(/\|range=([^|\n]*)/);
+
+      if (!nameMatch || !binomialMatch || !rangeMatch) {
+        throw new Error("Required bear information could not be extracted.");
+      }
+
+      return {
+        name: nameMatch[1].trim(),
+        binomial: binomialMatch[1].trim(),
+        range: rangeMatch[1].trim(),
+        image: await getImageOrPlaceholder(imageMatch)
+      };
+    });
+
+    return Promise.all(bearPromises);
+  }
+
+  try {
+    var url = baseUrl + "?" + new URLSearchParams(params).toString();
+    var response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("Wikipedia request failed with status " + response.status);
+    }
+
+    var data = await response.json();
+
+    var wikitext = data.parse?.wikitext?.['*'];
+
+    if (typeof wikitext !== 'string') {
+      throw new Error("Wikipedia response did not contain the expected wikitext.");
+    }
+
+    var bears = await extractBears(wikitext);
+
+    if (bears.length === 0) {
+      throw new Error("Wikipedia returned no bear data.");
+    }
+
+    renderBears(bears);
+  } catch (error) {
+    console.error("Could not load bear data: ", error);
+    renderBearError("Bear data could not be loaded. Please try again later.");
+  }
+}

@@ -9,3 +9,13 @@ export function renderBears(bears) {
         moreBears.innerHTML += html;
     });
 }
+
+export function renderBearError(message) {
+    var moreBears = document.querySelector('.more_bears');
+
+    var errorMessage = document.createElement('p');
+    errorMessage.className = 'bear-error';
+    errorMessage.textContent = message;
+
+    moreBears.appendChild(errorMessage);
+}

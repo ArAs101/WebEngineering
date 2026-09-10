@@ -83,6 +83,15 @@ Add error handling with `try`/`catch` and show useful, user-facing error message
 
 **Theory question:** How do synchronous exceptions and rejected promises travel through this application? Explain where errors should be caught and why catching every error at its source can make failures harder to diagnose.
 
+
+**Answer:**
+ 
+>In ordinary synchronous code, a thrown exception propagates immediately up the current call stack until a matching ```catch``` block handles it. In an ```async``` function, however, a thrown exception causes the Promise returned by that function to be rejected with the thrown value as its rejection reason. Such a rejected Promise is not handled simply by using ```await```. When a rejected Promise is awaited, the ```await``` expression throws the rejection reason. If the ```await``` is inside a fitting ```try/catch``` block, the error will be handled here. Otherwise, the enclosing ```async``` function also returns a rejected Promise, allowing the failure to propagate further to its caller.
+> 
+> In this application, this can be seen in ```extractBears()```. The asynchronous callbacks used to create the bear data can throw if required information is missing. Because those callbacks are ```async```, the corresponding bear Promise is rejected. ```Promise.all()``` then also returns a rejected Promise if any of those Promises rejects. When ```initBearData()``` awaits ```extractBears()```, that rejection is thrown at the ```await``` expression and is handled by the outer try/catch block. The application can then log the technical error and show a user-facing error message instead of treating the failure as valid empty data. Image failures are handled at a lower level because the application can recover from them meaningfully. ```getImageOrPlaceholder()``` catches an error while retrieving or loading an image, logs a warning, and returns the placeholder image. The remaining bear information is still valid, so there is no reason to fail the complete bear list. Errors that make the complete bear data unreliable, such as a failed Wikipedia request or invalid source data, should instead propagate to the superordinate ```initBearData()```, where the application has enough context to treat the whole operation as failed and inform the user.
+> 
+> Catching every error immediately at its source can make failures harder to diagnose if the error is suppressed or replaced with an apparently valid fallback value such as an empty array. Higher-level code may then be unable to distinguish between a successful operation that genuinely produced no meaningfull data and an operation that failed. Errors should therefore be caught where they can be reasonably recovered from, translated into an appropriate failure for the user, or enriched with additional context.
+
 #### Task 4: Refactor asynchronous control flow
 
 Replace promise callback chains with `async`/`await` and refactor suitable callbacks to arrow functions. Run independent asynchronous operations concurrently where doing so is safe.
