@@ -14,11 +14,12 @@ body {
   width: 80%;
   min-width: 1024px;
   margin: 0 auto;
+  font-family: Arial, sans-serif;
 }
 
 /* || typography */
 
-font[size="7"], font[size="6"], font[size="5"] {
+h1, h2, h3 {
   font-family: 'Sonsie One', cursive;
   color: #2a2a2a;
 }
@@ -28,19 +29,19 @@ p, input, li, table, label {
   color: #2a2a2a;
 }
 
-font[size="7"] {
+h1 {
   font-size: 4rem;
   text-align: center;
   color: white;
   text-shadow: 2px 2px 10px black;
 }
 
-font[size="6"] {
+h2 {
   font-size: 3rem;
   text-align: center;
 }
 
-font[size="5"] {
+h3 {
   font-size: 2.2rem;
 }
 
@@ -51,7 +52,7 @@ p, li, table {
 
 /* || header layout */
 
-div[class="nav"], article, footer, .secondary {
+.nav, article, footer, .secondary {
   background-color: green;
 }
 
@@ -63,28 +64,28 @@ article {
   margin-right: 10px;
 }
 
-div[class="nav"] {
+.nav {
   height: 50px;
-  background-color: ff80ff;
+  background-color: #ff80ff;
   display: flex;
   padding: 1% 0;
   margin-bottom: 10px;
 }
 
-div[class="nav"] ul {
+.nav ul {
   padding: 0;
   list-style-type: none;
   flex: 2;
   display: flex;
 }
 
-div[class="nav"] li {
+.nav li {
   display: inline;
   text-align: center;
   flex: 1;
 }
 
-div[class="nav"] a {
+.nav a {
   display: inline-block;
   font-size: 2rem;
   text-transform: uppercase;
@@ -92,7 +93,7 @@ div[class="nav"] a {
   color: black;
 }
 
-div[class="nav"] .search {
+.nav .search {
   flex: 1;
   display: flex;
   align-items: center;
@@ -115,6 +116,11 @@ div[class="nav"] .search {
   background: #333;
   border: 0;
   color: white;
+}
+
+.highlight {
+  background-color: yellow;
+  color: black;
 }
 
 /* || main layout */
@@ -145,9 +151,6 @@ table {
 
 th, td {
   padding: 10px;
-}
-
-td {
   text-align: center;
 }
 
@@ -170,6 +173,11 @@ audio {
   width: 500px;
 }
 
+.bear-image {
+  width: 200px;
+  height: auto;
+}
+
 /* Comments styling */
 
 .comments {
@@ -177,15 +185,11 @@ audio {
   padding: 10px;
 }
 
-.show-hide {
-  cursor: pointer;
-}
-
-.comments font[size="6"] {
+.comments h2 {
   font-size: 2rem;
 }
 
-.comments font[size="6"]:nth-of-type(2) {
+.comments > h2:nth-of-type(2) {
   margin-bottom: 0;
 }
 
@@ -209,17 +213,18 @@ audio {
   flex: 6;
 }
 
-.show-hide {
+.comments-toggle {
+  cursor: pointer;
   text-align: center;
   width: 150px;
 }
 
-.comment-form input, .comment-form label, .show-hide {
+.comment-form input, .comment-form label, .comments-toggle {
   font-size: 1.6rem;
   line-height: 32px;
 }
 
-.comment-form input[type="submit"], .show-hide {
+.comment-form input[type="submit"], .comments-toggle {
   background: #333;
   border: 0;
   color: white;

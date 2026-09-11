@@ -113,15 +113,42 @@ Find and eliminate the remaining bad coding practices. Consider scope, accidenta
 
 **Theory question:** Select one of your refactorings and explain how JavaScript scope, closures, references, or prototypes caused the original risk. State how you verified that your refactoring preserved behavior.
 
+**Answer:**
+ 
+>One refactoring concerned the recursive DOM traversal in the search feature. The original implementation iterated directly over node.childNodes while the traversal could also modify the DOM by replacing matching text nodes with new text and ```<mark>``` nodes. This was risky because DOM nodes are reference objects and ```childNodes``` is a live NodeList. A live collection reflects changes to the DOM immediately. Therefore, replacing nodes while iterating over the same collection could change the collection during traversal and make the iteration harder to reason about.
+>
+>I changed the traversal to use ```Array.from(node.childNodes)``` before iterating. This creates a static array containing references to the child nodes that existed at that moment. The nodes themselves are still referenced objects, but the collection being iterated no longer changes when the DOM is modified during highlighting. Moreover, I verified that the refactoring preserved behavior by testing searches with normal words, different capitalization, regular-expression special characters, and multiple consecutive searches. I also checked that previous highlights were removed correctly, hidden comment content was skipped while hidden, visible comment text could still be searched, and interactive elements such as the comments toggle button were not highlighted. The resulting search behavior remained the same where intended, while the DOM traversal became more predictable.
+
+
+
 > **What bad coding practices did you find? Why is it a bad practice and how did you fix it?**
 > 
-> Task 1:
+> ### Task 1
 > 
 > The ```<script>``` block at the end of index.html had to be replaced with a ```<script>``` call at the top of the file inside the ```<head>``` element. Scripts to be integrated should always be called at the beginning of the .html file because otherwise, it wouldn't be clear what scripts are to be referenced in the long run and chaos would ensue.
 > 
->Task 2:
-> 
-> ..
+> ### Task 5
+>
+> | Bad coding practice | Reason | How to fix it |
+> |---|---|---|
+> | Extensive use of `var` throughout the JavaScript files | `var` is function-scoped and does not clearly communicate whether reassignment is intended, which makes scope and mutation harder to reason about. | Replaced variables that are not reassigned with `const`. |
+> | Service configuration was defined inside the data-loading function | Values such as the API URL, Wikipedia page and placeholder path are constant configuration and do not need to be recreated for every call. | Moved them to module scope as constants such as `BASE_URL`, `PAGE_TITLE` and `PLACEHOLDER_IMAGE`. |
+> | `bearService.js` mixed data loading, error presentation and UI rendering | The service was coupled to `bearView.js` and had several responsibilities instead of only providing bear data. | Refactored it to export `loadBears()`, which returns data or propagates an error. `main.js` now coordinates loading, error handling and rendering. |
+> | Rendering was included in the same `try/catch` as data loading | A DOM error could incorrectly be reported as a bear-data loading failure, making the actual cause harder to diagnose. | Restricted the `try/catch` in `main.js` to `loadBears()` and perform `renderBears()` only after successful loading. |
+> | API URL construction and HTTP response handling were duplicated | The main Wikipedia request and image requests repeated URL construction, `fetch()`, `response.ok` checks and JSON parsing. | Extracted reusable helpers such as `buildApiUrl()` and `fetchJson()`. |
+> | Bear parsing and asynchronous image loading were combined in one function | Parsing Wikipedia rows and enriching them with images are separate responsibilities and were unnecessarily coupled. | Extracted `parseBearRow()` for parsing and validation and kept image loading as a separate asynchronous step. |
+> | Image loading depended on parser-specific regular-expression results and bear objects were mutated during enrichment | This coupled image handling to parsing internals and made shared object state harder to reason about. | Pass only the extracted filename to `getImageOrPlaceholder()` and create enriched bear objects with spread syntax such as `{ ...bear, image }`. |
+> | Bear rendering relied on concatenated HTML strings, `innerHTML +=` and inline styles | This mixed application data, markup and presentation, repeatedly reparsed HTML and caused unnecessary DOM updates. | Create elements with DOM APIs and `textContent`, collect them in a `DocumentFragment`, update `.bear-list` with `replaceChildren()`, and move visual styling to CSS classes. |
+> | Comment-related variable names and event-handler responsibilities were too broad | Names such as `form` and `list` were vague, while the submit handler performed validation, DOM construction, insertion and reset logic. | Introduced descriptive names such as `commentForm` and `commentList`, extracted `createCommentElement()`, build elements before inserting them, and reset the form with `commentForm.reset()`. |
+> | Comment visibility was controlled through `style.display`, and a generic `div` was used as an interactive control | JavaScript was coupled to presentation values such as `block` and `none`, while the clickable element had no native button semantics. | Replaced the toggle with a `<button>`, use the `hidden` property for visibility, and synchronize `aria-expanded` with the current state. |
+> | The search submit handler contained several unrelated responsibilities | It handled cleanup, regular-expression escaping, DOM traversal and highlighting in a single callback. | Extracted helpers such as `escapeRegExp()`, `clearHighlights()`, `walk()` and `highlightTextNode()`. |
+> | Search highlighting used `innerHTML` and numeric DOM node-type values | Parsing page text as HTML was unnecessary, and magic numbers such as `1` and `3` made traversal logic less readable. | Create `<mark>` and text nodes explicitly and use `Node.ELEMENT_NODE` and `Node.TEXT_NODE`. |
+> | Search traversal could modify interactive controls or hidden content | Elements inside `<article>`, such as the comments button and hidden comment section, could be traversed even when they should not be highlighted. | Skip configured elements such as `FORM` and `BUTTON`, skip hidden subtrees, and use a stable `Array.from(node.childNodes)` snapshot during recursive traversal. |
+> | Search code depended on a regular function's dynamic `this` value | Accessing the search field through `this.q` depended on event-listener-specific behavior and prevented safe use of an arrow callback. | Use the explicit `event.currentTarget.elements.q` reference instead. |
+> | Styling was spread across inline styles, JavaScript and `style.css`, with duplicate or overly specific selectors | Scattered styling and selectors such as `div[class="nav"]` made presentation harder to maintain and unnecessarily dependent on exact HTML structure. | Centralized styling in `style.css`, merged duplicate rules, replaced overly specific selectors with class selectors such as `.nav`, and fixed invalid CSS values. |
+> | Deprecated or non-semantic HTML was used for headings, navigation, table headers, labels and structural regions | Elements such as `<font>`, generic `<div>` containers and `<td>` column headings described presentation rather than document meaning and reduced accessibility. | Replaced them with semantic elements such as headings, `<nav>`, `<header>`, `<aside>`, `<th scope="col">` and `<label>`. |
+> | Repeated `<br><br>` elements were used for paragraph spacing | Line breaks were being used as a layout mechanism instead of representing actual line breaks. | Replaced paragraph-like text blocks with semantic `<p>` elements and leave visual spacing to CSS. |
+> | Obsolete CSS and naming remained after the HTML refactoring | Old `<font>` selectors no longer matched anything, and names such as `.show-hide` and `.more_bears` were inconsistent with the final component structure. | Removed dead selectors and adopted consistent component-oriented names such as `.comments-toggle` and `.more-bears`. |
 
 ## 2. Dependency- and Build Management Playground
 Build the application with ``npm`` and a build and a dependency management tool of your choice (e.g. [Vite](https://vitejs.dev/), [Webpack](https://webpack.js.org/), or others). 
