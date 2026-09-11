@@ -2,7 +2,7 @@ import { renderBears, renderBearError } from './bearView.js';
 
 export async function initBearData() {
   // Fetching bear data
-  var baseUrl = "http://en.wikipedia.org/w/api.php";
+  var baseUrl = "https://en.wikipedia.org/w/api.php";
   var title = "List_of_ursids";
   var placeholderImage = "media/bear_placeholder.png";
 
@@ -44,17 +44,10 @@ export async function initBearData() {
   }
 
   function canLoadImage(url) {
-    return new Promise(function (resolve) {
+    return new Promise((resolve) => {
       var image = new Image();
-
-      image.onload = function () {
-        resolve(true);
-      };
-
-      image.onerror = function () {
-        resolve(false);
-      };
-
+      image.onload = () => resolve(true);
+      image.onerror = () => resolve(false);
       image.src = url;
     });
   }
@@ -86,7 +79,7 @@ export async function initBearData() {
       throw new Error("No bear entries found in Wikipedia data.");
     }
 
-    var bearPromises = rows.map(async function (row) {
+    var bearPromises = rows.map(async (row) => {
       var nameMatch = row.match(/\|name=\[\[(.*?)\]\]/);
       var binomialMatch = row.match(/\|binomial=([^|\n]*)/);
       var imageMatch = row.match(/\|image=([^|\n]*)/);
@@ -104,7 +97,8 @@ export async function initBearData() {
       };
     });
 
-    return Promise.all(bearPromises);
+    var bears = await Promise.all(bearPromises);
+    return bears;
   }
 
   try {

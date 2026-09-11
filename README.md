@@ -98,6 +98,15 @@ Replace promise callback chains with `async`/`await` and refactor suitable callb
 
 **Theory question:** Explain the relationship between `async`/`await`, promises, the microtask queue, and the browser event loop. Also explain why an arrow function is not always an interchangeable replacement for a regular function, particularly regarding `this`.
 
+**Answer:**
+ 
+>```async/await``` is built on top of Promises. An ```async``` function always returns a Promise. When the code execution reaches ```await```, the function is suspended until the awaited value is settled, but the JavaScript thread and the browser aren't blocked. Once the awaited Promise fulfills or rejects, continuation of the ```async``` function is scheduled as a microtask. Promise reaction handlers such as ```.then()``` callbacks are also processed through the microtask queue.
+>
+> The browser event loop coordinates this execution. After the currently executing task and its synchronous JavaScript have finished, the browser processes queued microtasks before moving on to the next task. This is why Promise callbacks and continuations after ```await``` do not execute immediately in the middle of currently running synchronous code.
+>
+> In our application, ```async/await``` makes dependent asynchronous operations easier to read, for example fetching the Wikipedia response before processing its JSON. Independent operations, such as loading the images for the eight different bears, can run concurrently. The application creates a Promise for each bear and uses ```Promise.all()``` to wait for all of them. This avoids unnecessarily loading the images one after another while still preserving the order of the results.
+>
+> Arrow functions are not always interchangeable with regular functions because they do not define their own ```this```. Instead, they lexically inherit ```this``` from the surrounding scope. A regular function used as a DOM event listener can receive the element on which the listener is registered as ```this```. For example, the search handler in this application uses ```this.q.value``` to access the search field. Replacing that callback directly with an arrow function would change the meaning of this and could break the code. An arrow function could be used if the code instead accessed the element through ```event.currentTarget```. Therefore, arrow functions are suitable for callbacks that do not depend on their own dynamic ```this```, but they should not be used as automatic replacements for any and all regular functions.
 #### Task 5: Remove remaining code smells
 
 Find and eliminate the remaining bad coding practices. Consider scope, accidental globals, mutation and shared references, function responsibilities, naming, duplication, and DOM update patterns. Document each relevant finding, why it is problematic, and how you fixed it below.
