@@ -1,4 +1,7 @@
-function createBearElement(bear) {
+import { Bear } from "./types";
+import { getRequiredElement } from "./dom";
+
+function createBearElement(bear: Bear): HTMLDivElement {
     const bearElement = document.createElement('div');
     bearElement.className = 'bear';
     const image = document.createElement('img');
@@ -15,8 +18,8 @@ function createBearElement(bear) {
     return bearElement;
 }
 
-export function renderBears(bears) {
-    const bearList = document.querySelector('.bear-list');
+export function renderBears(bears: Bear[]): void {
+    const bearList = getRequiredElement<HTMLDivElement>('.bear-list');
     const fragment = document.createDocumentFragment();
     bears.forEach((bear) => {
         fragment.append(createBearElement(bear));
@@ -25,8 +28,8 @@ export function renderBears(bears) {
     bearList.replaceChildren(fragment);
 }
 
-export function renderBearError(message) {
-    const bearList = document.querySelector('.bear-list');
+export function renderBearError(message: string): void {
+    const bearList = getRequiredElement<HTMLDivElement>('.bear-list');
     const errorMessage = document.createElement('p');
     errorMessage.className = 'bear-error';
     errorMessage.textContent = message;

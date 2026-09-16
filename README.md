@@ -203,6 +203,51 @@ Use TypeScript as the primary development language and adapt the source files an
 
 **Theory question:** TypeScript uses structural typing and erases types during compilation. Explain both concepts and why a compile-time type alone cannot guarantee the shape of a Wikipedia API response at runtime.
 
+**Answer:**
+
+"Structural typing" means that TypeScript determines type compatibility based on the structure of a value rather than on explicitly declared type names. An object can therefore satisfy an interface if it has the required properties with compatible types, even if it was not explicitly declared as that interface.
+
+Example:
+
+```
+
+interface Bear {
+  name: string;
+  range: string;
+}
+
+const animal = {
+  name: "Brown bear",
+  range: "Europe and Asia"
+};
+
+const bear: Bear = animal;
+```
+
+"Type erasure" means that TypeScript types, interfaces, and type annotations are removed during compilation and don't exist in the transpiled JavaScript at runtime.
+
+Example:
+
+```
+interface Bear {
+  name: string;
+  range: string;
+}
+
+function printBear(bear: Bear): void {
+  console.log(bear.name);
+}
+
+```
+... becomes
+
+```
+function printBear(bear) {
+  console.log(bear.name);
+}
+
+```
+Therefore, assigning the result of a Wikipedia API request to a TypeScript type does not guarantee that the actual response has that shape because the API response is external runtime data and may be missing properties, contain different types, or represent an error response. It should first be treated as `unknown` and validated at runtime before the application uses it as a typed value.
 #### Task 3: Add static analysis and formatting
 
 Configure ESLint and Prettier using the rulesets below. Resolve all reported errors in the application code and avoid disabling rules without a written justification.

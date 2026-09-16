@@ -1,3 +1,5 @@
+import { getRequiredElement } from "./dom";
+
 const SKIPPED_TAGS = [
   'SCRIPT',
   'STYLE',
@@ -5,24 +7,28 @@ const SKIPPED_TAGS = [
   'BUTTON'
 ];
 
-function escapeRegExp(value) {
+function escapeRegExp(value: string): string {
   return value.replace(
       /[.*+?^${}()|[\]\\]/g,
       '\\$&'
     );
 }
 
-function clearHighlights(article) {
+function clearHighlights(article: HTMLElement): void {
   const highlights = article.querySelectorAll('.highlight');
   highlights.forEach((highlight) => {
     const parent = highlight.parentNode;
+    if (!parent) {
+      return;
+    }
     highlight.replaceWith(document.createTextNode(highlight.textContent));
     parent.normalize();
   });
 }
 
-function highlightTextNode(node, regex) {
-  const parts = node.nodeValue.split(regex);
+function highlightTextNode(node: Text, regex: RegExp): void {
+  const nodeValue = node.nodeValue ?? "";
+  const parts = nodeValue.split(regex);
   if (parts.length === 1) return;
   const fragment = document.createDocumentFragment();
   parts.forEach((part, index) => {
@@ -39,14 +45,14 @@ function highlightTextNode(node, regex) {
   node.replaceWith(fragment);
 }
 
-function walk(node, regex) {
-  if (node.nodeType === Node.TEXT_NODE) {
+function walk(node: Node, regex: RegExp): void {
+  if (node instanceof Text) {
     highlightTextNode(node, regex);
     return;
   }
 
   if (
-    node.nodeType === Node.ELEMENT_NODE &&
+    node instanceof HTMLElement &&
     !SKIPPED_TAGS.includes(node.tagName) &&
     !node.hidden
   ) {
@@ -56,13 +62,16 @@ function walk(node, regex) {
   }
 }
 
-export function initSearch() {
-  const article = document.querySelector('article');
-  const searchForm = document.querySelector('.search');
+export function initSearch(): void {
+  const article = getRequiredElement<HTMLElement>('article');
+  const searchForm = getRequiredElement<HTMLFormElement>('.search');
+  const searchInput = getRequiredElement<HTMLInputElement>(
+    'input[name="q"]', searchForm
+  );
   searchForm.addEventListener('submit', (event) => {
     event.preventDefault();
     clearHighlights(article);
-    const searchKey = event.currentTarget.elements.q.value.trim();
+    const searchKey = searchInput.value.trim();
     if (!searchKey) {
       return;
     }

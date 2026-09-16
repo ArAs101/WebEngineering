@@ -1,4 +1,6 @@
-function createCommentElement(name, comment) {
+import { getRequiredElement } from './dom';
+
+function createCommentElement(name: string, comment: string): HTMLLIElement {
     const listItem = document.createElement('li');
     const nameParagraph = document.createElement('p');
     const commentParagraph = document.createElement('p');
@@ -12,15 +14,15 @@ function createCommentElement(name, comment) {
     return listItem;
 }
 
-export function initComments() {
+export function initComments(): void {
     // Show/hide comments toggle
-    const toggleCommentsButton = document.querySelector('.comments-toggle');
-    const commentWrapper = document.querySelector('.comment-wrapper');
+    const toggleCommentsButton = getRequiredElement<HTMLButtonElement>('.comments-toggle');
+    const commentWrapper = getRequiredElement<HTMLElement>('.comment-wrapper');
     // Comment form stuff
-    const commentForm = document.querySelector('.comment-form');
-    const nameInput = document.querySelector('#name');
-    const commentInput = document.querySelector('#comment');
-    const commentList = document.querySelector('.comment-container');
+    const commentForm = getRequiredElement<HTMLFormElement>('.comment-form');
+    const nameInput = getRequiredElement<HTMLInputElement>('#name');
+    const commentInput = getRequiredElement<HTMLInputElement>('#comment');
+    const commentList = getRequiredElement<HTMLUListElement>('.comment-container');
     toggleCommentsButton.addEventListener('click', () => {
       commentWrapper.hidden = !commentWrapper.hidden;
       const isExpanded = !commentWrapper.hidden;
