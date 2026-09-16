@@ -1,0 +1,27 @@
+{
+  "name": "webengineering",
+  "version": "1.0.0",
+  "description": "This repository is designed as the foundation for coding playgrounds in the Web Engineering course. It offers a structured space for experimenting with and mastering various web development technologies and practices. \r The project is based on [this](https://developer.mozilla.org/en-US/docs/Learn/Accessibility/Accessibility_troubleshooting) repository from MDN.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArAs101/WebEngineering.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ArAs101/WebEngineering/issues"
+  },
+  "homepage": "https://github.com/ArAs101/WebEngineering#readme",
+  "devDependencies": {
+    "vite": "^8.3.0"
+  }
+}

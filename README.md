@@ -159,7 +159,43 @@ Build the application with ``npm`` and a build and a dependency management tool 
 
 Set up the project with `npm` and a build tool of your choice (for example, Vite or Webpack). Keep source files separate from generated distribution files and commit the package-manager lockfile.
 
+#### Steps:
+* `npm init -y`
+
+* `npm install --save-dev vite`
+* Add `"dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"` to the `scripts:` section in `packagejson.`
+* Create new `vite.config.js` file with these lines: 
+
+```
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  root: './',
+  build: {
+    outDir: './dist',
+    emptyOutDir: true
+  },
+  server: {
+    host: '127.0.0.1',
+    port: 5500
+  }
+});
+```
+
+* `npm run dev` starts the Vite server and serves the Bears website
+* `npm run build` instructs Vite to create a production environment by processing the source files and hashing assets
+
 **Theory question:** Distinguish source, build, distribution, and deployment. What does your build tool do in development and in a production build, and why is the lockfile important for reproducibility?
+
+**Answer:**
+
+"Source" refers to the files developers write and maintain (HTML, CSS, JavaScript, assets). A "build" is the process of turning these source files into a version suitable for production. The resulting files form the "distribution", which in this project is stored in the `dist` directory. "Deployment" is the process of publishing that distribution to a server/hosting platform so that users can access it.
+
+In development, Vite provides a local development server and quickly reflects source-code changes in the browser. A production build, created with `npm run build`, processes and optimizes the application and generates the final files in the `dist` directory, including processed assets with hashed filenames (e.g., `bear-Cjtr_t0B.ogg`, which is the hashed version of `bear.ogg` from the `src/media` directory).
+
+The `package-lock.json` file is important for reproducibility because it records the exact resolved dependency versions. Committing it helps ensure that developers and build systems install the same dependency versions and therefore work with a consistent environment.
 
 #### Task 2: Migrate to TypeScript
 
