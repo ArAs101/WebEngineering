@@ -299,6 +299,16 @@ Configure a pre-commit hook that checks staged code using [husky](https://typico
 **Theory question:** Compare a local pre-commit hook with a CI quality gate. Why is CI still necessary when hooks are configured, and why should CI use non-mutating checks rather than automatically rewriting source files?
 
 
+**Answer:**
+
+
+A local pre-commit hook provides fast feedback before a commit is created. In this project, Husky and `lint-staged` check only staged source files and may automatically fix linting or formatting problems. A CI quality gate runs independently after code is pushed or included in a pull request and validates the complete repository in a clean environment.
+
+CI is still necessary because local hooks can be skipped/misconfigured or behave differently depending on the developer's environment. CI therefore provides a central and consistent quality check for all contributions.
+
+The purpose of these non-mutating checks (e.g., `lint`, `format:check`, `typecheck`) is to verify the committed repository state, not to repair it. Automatically rewriting files in CI could hide quality problems because the fixes would exist only in the temporary CI environment and wouldn't be committed back to the repository. A failing CI check therefore makes the required source changes visible and ensures that developers explicitly commit the corrected code.
+
+
 **ESLint Configurations**
 
 Use ESLint configs [standard-with-typescript](https://www.npmjs.com/package/eslint-config-standard-with-typescript) and [TypeScript ESLint Plugin](https://www.npmjs.com/package/@typescript-eslint/eslint-plugin).
