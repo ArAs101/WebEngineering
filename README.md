@@ -347,6 +347,17 @@ Add React (or another framework of your choice) to the existing Vite and TypeScr
 
 **Theory question:** Contrast imperative DOM updates with React's declarative model. What happens during React's render, reconciliation, and commit phases, and why should code outside React not modify DOM nodes owned by the React root? If you chose not to use React, answer the same questions in the context of your chosen framework.
 
+
+**Answer:**
+
+
+Imperative DOM updates describe step by step how the DOM should be changed, for example by selecting an element and directly modifying its text, attributes, or children. React uses a declarative model instead where components describe what the UI should look like for the current props and state, and React determines the necessary DOM updates.
+
+During the "render phase", React executes the relevant components and creates a new representation of the UI. During the "reconciliation phase", React compares this new representation with the previous one and determines which parts have changed. In the "commit phase", React applies the required changes to the real DOM.
+
+Because then React would assume that it controls those nodes although it actually doesn't. External DOM changes can make the real DOM inconsistent with React's internal representation, and a later React update may therefore overwrite those changes or produce unexpected behaviour.
+
+
 #### Task 2: Design the component tree
 
 Decompose the interface into components organised by feature. Use props where appropriate, keep rendering pure, and render bear collections with stable keys.
