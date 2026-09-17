@@ -283,6 +283,15 @@ The `build`, `lint`, and `format:check` commands must exit with a non-zero statu
 
 **Theory question:** Why are stable, composable commands such as these useful as an interface for developers and CI? Explain idempotence and identify which of your scripts should be idempotent.
 
+
+**Answer:**
+
+
+Because developers won't need to remember the implementation details of tools like Vite, ESLint, Prettier, or TypeScript since they can use memorable, "human-friendly" commands such as `npm run build` or `npm run lint`. CI can use the same commands, therefore reducing differences between local development and automated checks. The commands can also be composed into larger workflows, with their exit status allowing CI to detect failures automatically and act accordingly.
+
+Idempotence means that executing an operation multiple times with the same input leads to the same final state. In this project, non-mutating scripts such as `lint`, `format:check`, and `typecheck` should be idempotent. `build` should also produce equivalent output when the inputs stay the same. Mutating scripts such as `format` and `lint:fix` should become idempotent after the first run: once the files are corrected, additional executions should make no further changes. The `dev` script isn't meant to be idempotent because it starts a long-running development server, and the associated development process usually can't be reproduced like a formatting process.
+
+
 #### Task 5: Enforce quality before integration
 
 Configure a pre-commit hook that checks staged code using [husky](https://typicode.github.io/husky/) and [lint-staged](https://github.com/lint-staged/lint-staged). Configure a continuous-integration workflow that installs dependencies from the lockfile and runs the non-mutating build, type, lint, and formatting checks for every push or pull request.
