@@ -1,33 +1,25 @@
-import { getRequiredElement } from "./dom";
+import { getRequiredElement } from './dom';
 
-const SKIPPED_TAGS = [
-  'SCRIPT',
-  'STYLE',
-  'FORM',
-  'BUTTON'
-];
+const SKIPPED_TAGS = ['SCRIPT', 'STYLE', 'FORM', 'BUTTON'];
 
 function escapeRegExp(value: string): string {
-  return value.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      '\\$&'
-    );
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function clearHighlights(article: HTMLElement): void {
   const highlights = article.querySelectorAll('.highlight');
   highlights.forEach((highlight) => {
     const parent = highlight.parentNode;
-    if (!parent) {
+    if (parent === null) {
       return;
     }
-    highlight.replaceWith(document.createTextNode(highlight.textContent));
+    highlight.replaceWith(document.createTextNode(highlight.textContent ?? ''));
     parent.normalize();
   });
 }
 
 function highlightTextNode(node: Text, regex: RegExp): void {
-  const nodeValue = node.nodeValue ?? "";
+  const nodeValue = node.nodeValue ?? '';
   const parts = nodeValue.split(regex);
   if (parts.length === 1) return;
   const fragment = document.createDocumentFragment();
@@ -66,19 +58,17 @@ export function initSearch(): void {
   const article = getRequiredElement<HTMLElement>('article');
   const searchForm = getRequiredElement<HTMLFormElement>('.search');
   const searchInput = getRequiredElement<HTMLInputElement>(
-    'input[name="q"]', searchForm
+    'input[name="q"]',
+    searchForm
   );
   searchForm.addEventListener('submit', (event) => {
     event.preventDefault();
     clearHighlights(article);
     const searchKey = searchInput.value.trim();
-    if (!searchKey) {
+    if (searchKey === '') {
       return;
     }
-    const regex = new RegExp(
-      '(' + escapeRegExp(searchKey) + ')',
-      'gi'
-    );
+    const regex = new RegExp('(' + escapeRegExp(searchKey) + ')', 'gi');
     walk(article, regex);
   });
 }

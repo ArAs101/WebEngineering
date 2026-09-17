@@ -4,7 +4,7 @@ export function getRequiredElement<T extends Element>(
 ): T {
   const element = parent.querySelector<T>(selector);
 
-  if (!element) {
+  if (element === null) {
     throw new Error(`Required element not found: ${selector}`);
   }
 

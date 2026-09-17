@@ -254,6 +254,20 @@ Configure ESLint and Prettier using the rulesets below. Resolve all reported err
 
 **Theory question:** What different problems do a linter, a formatter, and the TypeScript compiler detect? Give one concrete example for each from this project.
 
+
+**Answer:**
+
+
+A linter checks source code for suspicious patterns and violations of configured coding rules, even if the code is correct regarding its syntax and used types. In this project, ESLint detected an unnecessary `return` statement at the end of the `catch` block in `main.ts`.
+
+A formatter is responsible for consistent code style, such as indentation, quotes, line breaks, semicolons, and maximum line length. In this project, Prettier reformatted the `PLACEHOLDER_IMAGE` declaration because it exceeded the configured `printWidth` of 80 characters.
+
+
+The TypeScript compiler checks static type correctness. It can detect unsafe operations involving incompatible or nullable types. In this project, TypeScript detected that `nameMatch` and `binomialMatch`, which are returned by `String.match()`, could be `null` before their array elements were accessed.
+
+
+These 
+three tools complement each other.
 #### Task 4: Provide a consistent command interface
 
 Define the following tasks within `npm scripts`:
