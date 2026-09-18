@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { type ReactElement, useState } from 'react';
 import type { Bear } from './scripts/types';
 import Header from './components/layout/Header';
 import Navigation from './components/layout/Navigation';
@@ -9,14 +9,18 @@ import Footer from './components/layout/Footer';
 const bears: Bear[] = [];
 
 export default function App(): ReactElement {
+  const [searchQuery, setSearchQuery] = useState('');
   return (
     <>
       <Header />
 
-      <Navigation />
+      <Navigation
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+      />
 
       <main>
-        <BearArticle bears={bears} />
+        <BearArticle bears={bears} searchQuery={searchQuery} />
         <RelatedLinks />
       </main>
 

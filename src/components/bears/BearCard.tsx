@@ -3,6 +3,7 @@ import type { Bear } from '../../scripts/types';
 
 interface BearCardProps {
   bear: Bear;
+  searchQuery: string;
 }
 
 export default function BearCard({ bear }: BearCardProps): ReactElement {

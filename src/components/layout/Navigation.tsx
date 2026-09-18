@@ -1,7 +1,15 @@
 import type { ReactElement } from 'react';
 import SearchForm from '../search/SearchForm';
 
-export default function Navigation(): ReactElement {
+interface NavigationProps {
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+}
+
+export default function Navigation({
+  searchQuery,
+  onSearchQueryChange,
+}: NavigationProps): ReactElement {
   return (
     <nav className="nav">
       <ul>
@@ -19,7 +27,10 @@ export default function Navigation(): ReactElement {
         </li>
       </ul>
 
-      <SearchForm />
+      <SearchForm
+        searchQuery={searchQuery}
+        onSearchQueryChange={onSearchQueryChange}
+      />
     </nav>
   );
 }

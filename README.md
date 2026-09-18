@@ -378,6 +378,18 @@ Implement the comment toggle, comment form, and search behavior with React event
 
 **Theory question:** Distinguish props, stored state, and derived values. Explain why direct mutation can produce incorrect React behavior and when lifting state is preferable to introducing context.
 
+
+
+**Answer:**
+
+
+Props are values passed from a parent component to a child component. They are read-only from the child component's perspective and are used to provide data or callbacks to that component. "Stored state" refers to data owned by a component that can change over time, (e.g., whether the comments are visible or the current value of an input field). Derived values are values that can be calculated from existing props or state and therefore shouldn't usually be stored separately (e.g., whether a comment form can be submitted can be derived from whether the name and comment fields are non-empty).
+
+React's state model fundamentally relies on updates producing new values and then triggering a re-render. Directly mutating an existing object or array can therefore lead to incorrect behaviour because React may not reliably detect that the state has changed, and the previous state value is also modified in place. Instead, immutable updates should create a new object or array, for example by using the spread operator `...`.
+
+State should be lifted to the closest common ancestor when multiple related components need to read or update the same value. This keeps ownership clear and supports React's unidirectional data flow. Context is more appropriate when the same data must be accessed by many components across a larger or deeply nested part of the component tree, where passing props through many intermediate components would become inconvenient. For local or closely related components, lifting state is usually simpler than introducing context.
+
+
 #### Task 4: Load and represent remote data
 
 Load and validate the bear data within the React application. Represent loading, success, empty, and error states explicitly; prevent stale requests from overwriting newer results; and retain the image fallback behavior from Playground 1.
