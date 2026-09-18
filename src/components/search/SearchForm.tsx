@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactElement } from 'react';
+import { useEffect, useState, type FormEvent, type ReactElement } from 'react';
 
 interface SearchFormProps {
   searchQuery: string;
@@ -10,6 +10,9 @@ export default function SearchForm({
   onSearchQueryChange,
 }: SearchFormProps): ReactElement {
   const [inputValue, setInputValue] = useState(searchQuery);
+  useEffect(() => {
+    setInputValue(searchQuery);
+  }, [searchQuery]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { Link } from 'react-router';
 import SearchForm from '../search/SearchForm';
 
 interface NavigationProps {
@@ -14,7 +15,7 @@ export default function Navigation({
     <nav className="nav">
       <ul>
         <li>
-          <a href="#">Home</a>
+          <Link to="/bears">Home</Link>
         </li>
         <li>
           <a href="#">Our team</a>

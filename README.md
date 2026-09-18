@@ -409,6 +409,17 @@ Add at least a list route and a bear-detail route using a stable bear identifier
 
 **Theory question:** Distinguish client-side rendering, a single-page application, and client-side routing. Compare route parameters with query parameters, and describe one benefit and one cost of the SPA architecture used here.
 
+**Answer:**
+
+Client-side rendering means that the browser receives JavaScript and uses it to create and update the UI accordingly. In this project, React renders the page locally in the browser instead of the server sending a fully rendered HTML page for every view.
+
+A single-page application (SPA) is an application that loads one main HTML document and then updates the visible content dynamically without performing a full page reload for every navigation. Client-side routing is the mechanism that maps different browser URLs to different views inside that SPA. In this project, routes like `/bears` and `/bears/:bearId` show different React views within the same application.
+
+Route parameters are part of the path and usually identify a specific resource. For example, `/bears/:bearId` uses `bearId` to select one particular bear. Query parameters are optional values added after `?` and are better suited for view state such as search or filtering. For example, `/bears?q=brown` keeps the current search query explicitly visible in the URL.
+
+One benefit of the SPA architecture is that navigation between the bear list and bear details is fast and doesn't require a full page reload. It also allows view state (search query) to remain part of the URL. However, more application logic has to be handled on the client, including routing, data loading, loading and error states, and synchronisation between the URL and React state.
+
+
 ---
 
 ## In-Class Accessibility Workshop
