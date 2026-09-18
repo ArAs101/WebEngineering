@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import type { Bear } from '../../scripts/types';
+import type { BearLoadState } from '../../scripts/types';
 import CommentsSection from '../comments/CommentsSection';
 import BearList from '../bears/BearList';
 import HighlightedText from '../search/HighlightedText';
@@ -14,12 +14,12 @@ const bearMp3 = new URL('../../media/bear.mp3', import.meta.url).href;
 const bearOgg = new URL('../../media/bear.ogg', import.meta.url).href;
 
 interface BearArticleProps {
-  bears: Bear[];
+  bearLoadState: BearLoadState;
   searchQuery: string;
 }
 
 export default function BearArticle({
-  bears,
+  bearLoadState,
   searchQuery,
 }: BearArticleProps): ReactElement {
   return (
@@ -170,7 +170,7 @@ export default function BearArticle({
       </aside>
 
       <CommentsSection searchQuery={searchQuery} />
-      <BearList bears={bears} searchQuery={searchQuery} />
+      <BearList bearLoadState={bearLoadState} searchQuery={searchQuery} />
     </article>
   );
 }
