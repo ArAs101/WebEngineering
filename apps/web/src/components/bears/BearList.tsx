@@ -28,11 +28,7 @@ export default function BearList({
       {bearLoadState.status === 'success' && (
         <div className="bear-list">
           {bearLoadState.bears.map((bear) => (
-            <BearCard
-              key={bear.binomial}
-              bear={bear}
-              searchQuery={searchQuery}
-            />
+            <BearCard key={bear.id} bear={bear} searchQuery={searchQuery} />
           ))}
         </div>
       )}

@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import { bearRoutes } from './routes/bears.js';
 
-export function buildApp(): FastifyInstance {
+export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
 
   app.get('/health', async () => ({
@@ -9,5 +10,6 @@ export function buildApp(): FastifyInstance {
     uptime: Math.round(process.uptime()),
   }));
 
-  return app;
+  await app.register(bearRoutes);
+  return await app;
 }

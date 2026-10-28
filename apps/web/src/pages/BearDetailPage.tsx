@@ -45,9 +45,7 @@ export default function BearDetailPage({
     );
   }
 
-  const bear = bearLoadState.bears.find(
-    (candidate) => candidate.binomial === bearId
-  );
+  const bear = bearLoadState.bears.find((candidate) => candidate.id === bearId);
 
   if (bear === undefined) {
     return (

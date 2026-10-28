@@ -12,7 +12,7 @@ export default function BearCard({
   bear,
   searchQuery,
 }: BearCardProps): ReactElement {
-  const encodedBearId = encodeURIComponent(bear.binomial);
+  const encodedBearId = encodeURIComponent(bear.id);
   const detailUrl =
     searchQuery === ''
       ? `/bears/${encodedBearId}`
