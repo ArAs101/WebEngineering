@@ -6,10 +6,16 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: '../dist',
-    emptyOutDir: true
+    emptyOutDir: true,
   },
   server: {
     host: '127.0.0.1',
-    port: 5500
-  }
+    port: 5500,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+      },
+    },
+  },
 });

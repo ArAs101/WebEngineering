@@ -7,7 +7,9 @@ env:
 parser: '@typescript-eslint/parser'
 
 parserOptions:
-  project: './tsconfig.json'
+  project:
+    - './apps/web/tsconfig.json'
+    - './apps/api/tsconfig.json'
   sourceType: module
   ecmaVersion: latest
   ecmaFeatures:
@@ -19,6 +21,17 @@ extends:
   - plugin:prettier/recommended
   - prettier
 
+overrides:
+    - files:
+        - 'apps/web/src/**/*.{js,jsx,ts,tsx}'
+      env:
+        browser: true
+        
+    - files:
+        - 'apps/api/src/**/*.{js,jsx,ts,tsx}'
+      env:
+        node: true
+
 ignorePatterns:
-  - dist/
-  - node_modules/
+  - '**/dist/**'
+  - '**/node_modules/**'
