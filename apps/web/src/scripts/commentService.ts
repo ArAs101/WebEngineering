@@ -1,3 +1,5 @@
+import { errorFromResponse } from './apiError';
+
 export interface Comment {
   id: string;
   bearId: string;
@@ -39,7 +41,7 @@ export async function loadComments(bearId: string): Promise<Comment[]> {
   );
 
   if (!response.ok) {
-    throw new Error(`Could not load comments: HTTP ${response.status}`);
+    throw await errorFromResponse(response, `Could not load comments`);
   }
 
   const data: unknown = await response.json();
@@ -74,7 +76,7 @@ export async function addComment(
   );
 
   if (!response.ok) {
-    throw new Error(`Could not create comment: HTTP ${response.status}`);
+    throw await errorFromResponse(response, `Could not create comment`);
   }
 
   const data: unknown = await response.json();
@@ -96,6 +98,6 @@ export async function deleteComment(commentId: string): Promise<void> {
   );
 
   if (!response.ok) {
-    throw new Error(`Could not delete comment: HTTP ${response.status}`);
+    throw await errorFromResponse(response, `Could not delete comment`);
   }
 }

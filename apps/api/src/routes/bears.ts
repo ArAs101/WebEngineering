@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { NotFoundError, ValidationError } from '../errors.js';
 import { BearId } from '../schemas/bear.js';
 import { getBears } from '../services/bear-service.js';
 
@@ -13,15 +14,17 @@ export const bearRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // GET /api/bears/:id
-  app.get<{ Params: BearParams }>('/api/bears/:id', async (request, reply) => {
+  app.get<{ Params: BearParams }>('/api/bears/:id', async (request) => {
     const parsedId = BearId.safeParse(request.params.id);
 
     if (!parsedId.success) {
-      return await reply.code(400).send({
-        statusCode: 400,
-        error: 'Bad Request',
-        message: 'Invalid bear ID',
-      });
+      throw new ValidationError(
+        parsedId.error.issues.map((issue) => ({
+          path: 'id',
+          message: issue.message,
+        })),
+        'Invalid bear ID.'
+      );
     }
 
     const bears = await getBears();
@@ -29,11 +32,7 @@ export const bearRoutes: FastifyPluginAsync = async (app) => {
     const bear = bears.find((candidate) => candidate.id === parsedId.data);
 
     if (bear === undefined) {
-      return await reply.code(404).send({
-        statusCode: 404,
-        error: 'Not Found',
-        message: 'Bear not found',
-      });
+      throw new NotFoundError('Bear');
     }
 
     return bear;

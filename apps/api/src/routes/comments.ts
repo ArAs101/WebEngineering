@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { NotFoundError, ValidationError } from '../errors.js';
 import { BearId } from '../schemas/bear.js';
 import { NewCommentSchema } from '../schemas/comment.js';
 import { getBears } from '../services/bear-service.js';
@@ -24,23 +25,20 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
   // GET /api/bears/:id/comments
   app.get<{ Params: BearParams }>(
     '/api/bears/:id/comments',
-    async (request, reply) => {
+    async (request) => {
       const parsedId = BearId.safeParse(request.params.id);
 
       if (!parsedId.success) {
-        return await reply.code(400).send({
-          statusCode: 400,
-          error: 'Bad Request',
-          message: 'Invalid bear ID',
-        });
+        throw new ValidationError(
+          parsedId.error.issues.map((issue) => ({
+            path: 'id',
+            message: issue.message,
+          }))
+        );
       }
 
       if (!(await bearExists(parsedId.data))) {
-        return await reply.code(404).send({
-          statusCode: 404,
-          error: 'Not Found',
-          message: 'Bear not found',
-        });
+        throw new NotFoundError('Bear');
       }
 
       return {
@@ -58,19 +56,26 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
       const parsedBody = NewCommentSchema.safeParse(request.body);
 
       if (!parsedId.success || !parsedBody.success) {
-        return await reply.code(400).send({
-          statusCode: 400,
-          error: 'Bad Request',
-          message: 'Invalid comment data or bear ID',
-        });
+        const issues = [
+          ...(!parsedId.success
+            ? parsedId.error.issues.map((issue) => ({
+                path: 'id',
+                message: issue.message,
+              }))
+            : []),
+          ...(!parsedBody.success
+            ? parsedBody.error.issues.map((issue) => ({
+                path: issue.path.map(String).join('.'),
+                message: issue.message,
+              }))
+            : []),
+        ];
+
+        throw new ValidationError(issues, 'The comment could not be accepted.');
       }
 
       if (!(await bearExists(parsedId.data))) {
-        return await reply.code(404).send({
-          statusCode: 404,
-          error: 'Not Found',
-          message: 'Bear not found',
-        });
+        throw new NotFoundError('Bear');
       }
 
       const comment = comments.create(parsedId.data, parsedBody.data);
@@ -89,19 +94,16 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
       const parsedId = z.uuid().safeParse(request.params.commentId);
 
       if (!parsedId.success) {
-        return await reply.code(400).send({
-          statusCode: 400,
-          error: 'Bad Request',
-          message: 'Invalid comment ID',
-        });
+        throw new ValidationError(
+          parsedId.error.issues.map((issue) => ({
+            path: 'commentId',
+            message: issue.message,
+          }))
+        );
       }
 
       if (!comments.remove(parsedId.data)) {
-        return await reply.code(404).send({
-          statusCode: 404,
-          error: 'Not Found',
-          message: 'Comment not found',
-        });
+        throw new NotFoundError('Comment');
       }
 
       return await reply.code(204).send();
