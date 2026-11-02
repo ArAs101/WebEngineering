@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import type { BearLoadState } from '../scripts/types';
 import RelatedLinks from '../components/layout/RelatedLinks';
 import HighlightedText from '../components/search/HighlightedText';
+import CommentsSection from '../components/comments/CommentsSection';
 
 interface BearDetailPageProps {
   bearLoadState: BearLoadState;
@@ -82,6 +83,11 @@ export default function BearDetailPage({
         </p>
       </article>
 
+      <CommentsSection
+        key={bear.id}
+        bearId={bear.id}
+        searchQuery={searchQuery}
+      />
       <RelatedLinks />
     </>
   );

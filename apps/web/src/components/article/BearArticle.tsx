@@ -1,6 +1,5 @@
 import type { ReactElement } from 'react';
 import type { BearLoadState } from '../../scripts/types';
-import CommentsSection from '../comments/CommentsSection';
 import BearList from '../bears/BearList';
 import HighlightedText from '../search/HighlightedText';
 
@@ -169,7 +168,6 @@ export default function BearArticle({
         </p>
       </aside>
 
-      <CommentsSection searchQuery={searchQuery} />
       <BearList bearLoadState={bearLoadState} searchQuery={searchQuery} />
     </article>
   );
