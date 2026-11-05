@@ -14,5 +14,9 @@ export const ProblemSchema = z.object({
   errors: z.array(ValidationIssueSchema).optional(),
 });
 
+z.globalRegistry.add(ProblemSchema, {
+  id: 'Problem',
+});
+
 export type ValidationIssue = z.infer<typeof ValidationIssueSchema>;
 export type Problem = z.infer<typeof ProblemSchema>;

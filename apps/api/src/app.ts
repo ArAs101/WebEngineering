@@ -1,10 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import { STATUS_CODES } from 'node:http';
 import Fastify, { type FastifyInstance } from 'fastify';
+import cors from '@fastify/cors';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
+import {
+  jsonSchemaTransform,
+  jsonSchemaTransformObject,
+  serializerCompiler,
+  validatorCompiler,
+} from '@fastify/type-provider-zod';
+import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { AppError, ValidationError } from './errors.js';
 import { bearRoutes } from './routes/bears.js';
 import { commentRoutes } from './routes/comments.js';
 import type { Problem } from './schemas/problem.js';
+import { HealthSchema } from './schemas/health.js';
+import { ProblemSchema } from './schemas/problem.js';
 
 const PROBLEM_BASE_URI = 'https://bears.example/problems';
 
@@ -72,6 +84,9 @@ export async function buildApp(): Promise<FastifyInstance> {
     genReqId: () => randomUUID(),
   });
 
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
+
   // Include the request ID in every response
   app.addHook('onSend', async (request, reply) => {
     void reply.header('x-request-id', request.id);
@@ -106,15 +121,144 @@ export async function buildApp(): Promise<FastifyInstance> {
     };
 
     request.log.info('Route not found');
-
     return reply.code(404).type('application/problem+json').send(problem);
   });
 
-  app.get('/health', async () => ({
-    status: 'ok',
-    version: process.env.APP_VERSION ?? 'dev',
-    uptime: Math.round(process.uptime()),
-  }));
+  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
+  await app.register(cors, {
+    origin: corsOrigins,
+    methods: ['GET', 'POST', 'DELETE'],
+    allowedHeaders: ['content-type', 'x-request-id'],
+    exposedHeaders: ['location', 'x-request-id'],
+    credentials: false,
+    maxAge: 600,
+  });
+
+  await app.register(swagger, {
+    openapi: {
+      openapi: '3.1.0',
+      info: {
+        title: 'Bears API',
+        description: 'Backend-for-Frontend API for bear data and comments.',
+        version: '0.1.0',
+      },
+      tags: [
+        {
+          name: 'Health',
+          description: 'API health and availability',
+        },
+        {
+          name: 'Bears',
+          description: 'Bear information provided by the BFF',
+        },
+        {
+          name: 'Comments',
+          description: 'Comments associated with bears',
+        },
+      ],
+    },
+    transform: jsonSchemaTransform,
+    transformObject: (document) => {
+      const spec = jsonSchemaTransformObject(document);
+
+      if (!('openapi' in spec)) {
+        return spec;
+      }
+
+      const responseGroups = [
+        spec.paths?.['/health']?.get?.responses,
+        spec.paths?.['/api/bears']?.get?.responses,
+        spec.paths?.['/api/bears/{id}']?.get?.responses,
+        spec.paths?.['/api/bears/{id}/comments']?.get?.responses,
+        spec.paths?.['/api/bears/{id}/comments']?.post?.responses,
+        spec.paths?.['/api/comments/{commentId}']?.delete?.responses,
+      ];
+
+      for (const responses of responseGroups) {
+        for (const status of ['400', '404', '500', '502', '504']) {
+          const response = responses?.[status];
+
+          if (
+            response === undefined ||
+            !('content' in response) ||
+            response.content === undefined
+          ) {
+            continue;
+          }
+
+          const jsonContent = response.content['application/json'];
+
+          if (jsonContent !== undefined) {
+            response.content['application/problem+json'] = jsonContent;
+            delete response.content['application/json'];
+          }
+        }
+      }
+
+      const createdResponse =
+        spec.paths?.['/api/bears/{id}/comments']?.post?.responses?.['201'];
+
+      if (createdResponse !== undefined && !('$ref' in createdResponse)) {
+        createdResponse.description = 'Comment created successfully';
+
+        createdResponse.headers = {
+          ...createdResponse.headers,
+          Location: {
+            description: 'Relative URL of the newly created comment.',
+            schema: {
+              type: 'string',
+            },
+            example: '/api/comments/123e4567-e89b-42d3-a456-426614174000',
+          },
+        };
+      }
+
+      const noContentResponse =
+        spec.paths?.['/api/comments/{commentId}']?.delete?.responses?.['204'];
+
+      if (noContentResponse !== undefined && !('$ref' in noContentResponse)) {
+        noContentResponse.description = 'Comment deleted successfully';
+
+        delete noContentResponse.content;
+      }
+
+      return spec;
+    },
+  });
+
+  await app.register(swaggerUi, {
+    routePrefix: '/api/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: true,
+    },
+  });
+
+  const typedApp = app.withTypeProvider<ZodTypeProvider>();
+  typedApp.get(
+    '/health',
+    {
+      schema: {
+        tags: ['Health'],
+        summary: 'Get API health status',
+        description:
+          'Returns the API status, application version, and process uptime in seconds.',
+        response: {
+          200: HealthSchema,
+          500: ProblemSchema,
+        },
+      },
+    },
+    async () => ({
+      status: 'ok' as const,
+      version: process.env.APP_VERSION ?? 'dev',
+      uptime: Math.round(process.uptime()),
+    })
+  );
 
   await app.register(bearRoutes);
   await app.register(commentRoutes);

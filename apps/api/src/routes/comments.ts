@@ -1,18 +1,12 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { BearId } from '../schemas/bear.js';
-import { NewCommentSchema } from '../schemas/comment.js';
+import { CommentSchema, NewCommentSchema } from '../schemas/comment.js';
 import { getBears } from '../services/bear-service.js';
 import { createCommentService } from '../services/comment-service.js';
-
-interface BearParams {
-  id: string;
-}
-
-interface CommentParams {
-  commentId: string;
-}
+import { ProblemSchema } from '../schemas/problem.js';
 
 async function bearExists(bearId: string): Promise<boolean> {
   const bears = await getBears();
@@ -21,10 +15,35 @@ async function bearExists(bearId: string): Promise<boolean> {
 
 export const commentRoutes: FastifyPluginAsync = async (app) => {
   const comments = createCommentService();
+  const typedApp = app.withTypeProvider<ZodTypeProvider>();
 
   // GET /api/bears/:id/comments
-  app.get<{ Params: BearParams }>(
+  typedApp.get(
     '/api/bears/:id/comments',
+    {
+      schema: {
+        tags: ['Comments'],
+        summary: 'List comments for a bear',
+        description:
+          'Returns all currently stored comments for an existing bear.',
+        params: z.object({
+          id: z
+            .string()
+            .describe('Normalized bear species ID, e.g. ursus-arctos'),
+        }),
+        response: {
+          200: z.object({
+            items: CommentSchema.array(),
+            nextCursor: z.string().nullable(),
+          }),
+          400: ProblemSchema,
+          404: ProblemSchema,
+          500: ProblemSchema,
+          502: ProblemSchema,
+          504: ProblemSchema,
+        },
+      },
+    },
     async (request) => {
       const parsedId = BearId.safeParse(request.params.id);
 
@@ -49,8 +68,30 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // POST /api/bears/:id/comments
-  app.post<{ Params: BearParams }>(
+  typedApp.post(
     '/api/bears/:id/comments',
+    {
+      attachValidation: true,
+      schema: {
+        tags: ['Comments'],
+        summary: 'Create a comment for a bear',
+        description: 'Creates a new comment for an existing bear.',
+        params: z.object({
+          id: z
+            .string()
+            .describe('Normalized bear species ID, e.g. ursus-arctos'),
+        }),
+        body: NewCommentSchema,
+        response: {
+          201: CommentSchema,
+          400: ProblemSchema,
+          404: ProblemSchema,
+          500: ProblemSchema,
+          502: ProblemSchema,
+          504: ProblemSchema,
+        },
+      },
+    },
     async (request, reply) => {
       const parsedId = BearId.safeParse(request.params.id);
       const parsedBody = NewCommentSchema.safeParse(request.body);
@@ -88,8 +129,24 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // DELETE /api/comments/:commentId
-  app.delete<{ Params: CommentParams }>(
+  typedApp.delete(
     '/api/comments/:commentId',
+    {
+      schema: {
+        tags: ['Comments'],
+        summary: 'Delete a comment',
+        description: 'Deletes an existing comment identified by its UUID.',
+        params: z.object({
+          commentId: z.string().describe('UUID of the comment to delete'),
+        }),
+        response: {
+          204: z.undefined().describe('No Content'),
+          400: ProblemSchema,
+          404: ProblemSchema,
+          500: ProblemSchema,
+        },
+      },
+    },
     async (request, reply) => {
       const parsedId = z.uuid().safeParse(request.params.commentId);
 

@@ -10,4 +10,8 @@ export const BearSchema = z.object({
   range: z.string(),
 });
 
+z.globalRegistry.add(BearSchema, {
+  id: 'Bear',
+});
+
 export type Bear = z.infer<typeof BearSchema>;

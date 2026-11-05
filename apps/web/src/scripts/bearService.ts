@@ -1,5 +1,6 @@
 import type { Bear } from './types';
 import { errorFromResponse } from './apiError';
+import { apiUrl } from './apiUrl';
 
 const PLACEHOLDER_IMAGE = new URL(
   '../media/bear_placeholder.png',
@@ -31,7 +32,7 @@ function isApiBear(value: unknown): value is ApiBear {
 }
 
 export async function loadBears(): Promise<Bear[]> {
-  const response = await fetch('/api/bears');
+  const response = await fetch(apiUrl('/api/bears'));
 
   if (!response.ok) {
     throw await errorFromResponse(response, 'Bear API request failed');

@@ -1,4 +1,5 @@
 import { errorFromResponse } from './apiError';
+import { apiUrl } from './apiUrl';
 
 export interface Comment {
   id: string;
@@ -37,7 +38,7 @@ function isComment(value: unknown): value is Comment {
 // GET: Load comments belonging to a bear
 export async function loadComments(bearId: string): Promise<Comment[]> {
   const response = await fetch(
-    `/api/bears/${encodeURIComponent(bearId)}/comments`
+    apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments`)
   );
 
   if (!response.ok) {
@@ -65,7 +66,7 @@ export async function addComment(
   comment: NewComment
 ): Promise<Comment> {
   const response = await fetch(
-    `/api/bears/${encodeURIComponent(bearId)}/comments`,
+    apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments`),
     {
       method: 'POST',
       headers: {
@@ -91,7 +92,7 @@ export async function addComment(
 // DELETE: Remove a comment
 export async function deleteComment(commentId: string): Promise<void> {
   const response = await fetch(
-    `/api/comments/${encodeURIComponent(commentId)}`,
+    apiUrl(`/api/comments/${encodeURIComponent(commentId)}`),
     {
       method: 'DELETE',
     }

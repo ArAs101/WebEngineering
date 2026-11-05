@@ -12,5 +12,13 @@ export const CommentSchema = NewCommentSchema.extend({
   createdAt: z.iso.datetime(),
 });
 
+z.globalRegistry.add(NewCommentSchema, {
+  id: 'NewComment',
+});
+
+z.globalRegistry.add(CommentSchema, {
+  id: 'Comment',
+});
+
 export type NewComment = z.infer<typeof NewCommentSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
