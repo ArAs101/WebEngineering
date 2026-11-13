@@ -1,4 +1,4 @@
-import { asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Database } from '../db/database.js';
 import { comments } from '../db/schema.js';
 import type { Comment } from '../schemas/comment.js';
@@ -28,6 +28,21 @@ export function createDrizzleCommentRepository(
         .from(comments)
         .where(inArray(comments.bearId, bearIds))
         .orderBy(asc(comments.createdAt), asc(comments.id));
+      return rows.map(toComment);
+    },
+    async listPage(bearId, limit, after) {
+      const afterCursor =
+        after === undefined
+          ? undefined
+          : sql`(${comments.createdAt}, ${comments.id}) < (${after.createdAt}::timestamptz, ${after.id}::uuid)`;
+
+      const rows = await db
+        .select()
+        .from(comments)
+        .where(and(eq(comments.bearId, bearId), afterCursor))
+        .orderBy(desc(comments.createdAt), desc(comments.id))
+        .limit(limit);
+
       return rows.map(toComment);
     },
     async create(bearId, data) {

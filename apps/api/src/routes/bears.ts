@@ -17,16 +17,19 @@ export const bearRoutes: FastifyPluginAsync<{ bears: BearRepository }> = async (
     {
       schema: {
         tags: ['Bears'],
-        summary: 'List all bears',
-        description: 'Returns the stored bear species.',
+        summary: 'List bears',
+        description:
+          'Returns the stored bear species, optionally filtered by name.',
+        querystring: z.object({ q: z.string().trim().max(100).optional() }),
         response: {
           200: BearSchema.array(),
+          400: ProblemSchema,
           500: ProblemSchema,
         },
       },
     },
-    async () => {
-      return await bears.list();
+    async (request) => {
+      return await bears.list(request.query.q);
     }
   );
 

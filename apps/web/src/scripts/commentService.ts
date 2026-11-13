@@ -36,13 +36,23 @@ function isComment(value: unknown): value is Comment {
 }
 
 // GET: Load comments belonging to a bear
-export async function loadComments(bearId: string): Promise<Comment[]> {
+export async function loadComments(
+  bearId: string,
+  cursor?: string
+): Promise<CommentListResponse> {
+  const params = new URLSearchParams({ limit: '20' });
+  if (cursor !== undefined) {
+    params.set('cursor', cursor);
+  }
+
   const response = await fetch(
-    apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments`)
+    apiUrl(
+      `/api/bears/${encodeURIComponent(bearId)}/comments?${params.toString()}`
+    )
   );
 
   if (!response.ok) {
-    throw await errorFromResponse(response, `Could not load comments`);
+    throw await errorFromResponse(response, 'Could not load comments');
   }
 
   const data: unknown = await response.json();
@@ -53,11 +63,15 @@ export async function loadComments(bearId: string): Promise<Comment[]> {
 
   const result = data as Partial<CommentListResponse>;
 
-  if (!Array.isArray(result.items) || !result.items.every(isComment)) {
+  if (
+    !Array.isArray(result.items) ||
+    !result.items.every(isComment) ||
+    (result.nextCursor !== null && typeof result.nextCursor !== 'string')
+  ) {
     throw new Error('Invalid comments data received.');
   }
 
-  return result.items;
+  return { items: result.items, nextCursor: result.nextCursor };
 }
 
 // POST: Create a new comment

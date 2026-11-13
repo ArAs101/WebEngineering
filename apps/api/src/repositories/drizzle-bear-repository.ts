@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, ilike } from 'drizzle-orm';
 import type { Database } from '../db/database.js';
 import { bears } from '../db/schema.js';
 import type { BearRepository } from './bear-repository.js';
@@ -13,8 +13,17 @@ const bearFields = {
 
 export function createDrizzleBearRepository(db: Database): BearRepository {
   return {
-    async list() {
-      return await db.select(bearFields).from(bears).orderBy(asc(bears.name));
+    async list(query) {
+      const pattern = query?.replace(/[\\%_]/g, '\\$&');
+      return await db
+        .select(bearFields)
+        .from(bears)
+        .where(
+          pattern !== undefined && pattern !== ''
+            ? ilike(bears.name, '%' + pattern + '%')
+            : undefined
+        )
+        .orderBy(asc(bears.name));
     },
     async findById(id) {
       const [bear] = await db

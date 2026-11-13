@@ -18,6 +18,11 @@ interface CommentsSectionProps {
   searchQuery: string;
 }
 
+function newestFirst(a: Comment, b: Comment): number {
+  const timeOrder = b.createdAt.localeCompare(a.createdAt);
+  return timeOrder === 0 ? b.id.localeCompare(a.id) : timeOrder;
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
 }
@@ -31,9 +36,13 @@ export default function CommentsSection({
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isBusy =
+    isLoading || isLoadingMore || isSubmitting || deletingId !== null;
 
   const canSubmit =
     name.trim().length > 0 &&
@@ -46,15 +55,17 @@ export default function CommentsSection({
     let active = true;
 
     setComments([]);
+    setNextCursor(null);
     setIsLoading(true);
     setError(null);
 
     async function fetchComments(): Promise<void> {
       try {
-        const items = await loadComments(bearId);
+        const page = await loadComments(bearId);
 
         if (active) {
-          setComments(items);
+          setComments(page.items);
+          setNextCursor(page.nextCursor);
         }
       } catch (error: unknown) {
         if (active) {
@@ -73,6 +84,31 @@ export default function CommentsSection({
       active = false;
     };
   }, [bearId]);
+
+  async function loadMore(): Promise<void> {
+    if (nextCursor === null || isBusy) {
+      return;
+    }
+
+    setIsLoadingMore(true);
+    setError(null);
+
+    try {
+      const page = await loadComments(bearId, nextCursor);
+      setComments((current) => {
+        const existingIds = new Set(current.map((comment) => comment.id));
+        return [
+          ...current,
+          ...page.items.filter((comment) => !existingIds.has(comment.id)),
+        ].sort(newestFirst);
+      });
+      setNextCursor(page.nextCursor);
+    } catch (error: unknown) {
+      setError(getErrorMessage(error));
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
 
   function handleToggle(): void {
     setIsOpen((current) => !current);
@@ -96,7 +132,12 @@ export default function CommentsSection({
         text: commentText.trim(),
       });
 
-      setComments((current) => [...current, createdComment]);
+      setComments((current) =>
+        [
+          createdComment,
+          ...current.filter((comment) => comment.id !== createdComment.id),
+        ].sort(newestFirst)
+      );
       setName('');
       setCommentText('');
     } catch (error: unknown) {
@@ -109,7 +150,7 @@ export default function CommentsSection({
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
 
-    if (!canSubmit || isSubmitting) {
+    if (!canSubmit || isBusy) {
       return;
     }
 
@@ -185,7 +226,7 @@ export default function CommentsSection({
             <input
               type="submit"
               value={isSubmitting ? 'Submitting...' : 'Submit comment'}
-              disabled={!canSubmit || isSubmitting}
+              disabled={!canSubmit || isBusy}
             />
           </div>
         </form>
@@ -213,7 +254,7 @@ export default function CommentsSection({
               </p>
               <button
                 type="button"
-                disabled={deletingId !== null}
+                disabled={isBusy}
                 onClick={() => {
                   void handleDelete(comment.id);
                 }}
@@ -223,6 +264,17 @@ export default function CommentsSection({
             </li>
           ))}
         </ul>
+        {nextCursor !== null && (
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={() => {
+              void loadMore();
+            }}
+          >
+            {isLoadingMore ? 'Loading more comments...' : 'Load more comments'}
+          </button>
+        )}
       </div>
     </section>
   );

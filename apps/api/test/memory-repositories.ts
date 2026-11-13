@@ -8,9 +8,13 @@ export function createMemoryBearRepository(fixture: Bear[]): BearRepository {
   const bears = new Map(fixture.map((bear) => [bear.id, bear]));
 
   return {
-    list: () =>
+    list: (query = '') =>
       Promise.resolve(
-        [...bears.values()].sort((a, b) => a.name.localeCompare(b.name))
+        [...bears.values()]
+          .filter((bear) =>
+            bear.name.toLowerCase().includes(query.toLowerCase())
+          )
+          .sort((a, b) => a.name.localeCompare(b.name))
       ),
     findById: (id) => Promise.resolve(bears.get(id) ?? null),
   };
@@ -26,6 +30,22 @@ export function createMemoryCommentRepository(): CommentRepository {
           bearIds.includes(comment.bearId)
         )
       ),
+    listPage: (bearId, limit, after) => {
+      const items = [...comments.values()]
+        .filter((comment) => comment.bearId === bearId)
+        .filter(
+          (comment) =>
+            after === undefined ||
+            comment.createdAt < after.createdAt ||
+            (comment.createdAt === after.createdAt && comment.id < after.id)
+        )
+        .sort((a, b) => {
+          const timeOrder = b.createdAt.localeCompare(a.createdAt);
+          return timeOrder === 0 ? b.id.localeCompare(a.id) : timeOrder;
+        });
+
+      return Promise.resolve(items.slice(0, limit));
+    },
     create: (bearId, data) => {
       const comment: Comment = {
         id: randomUUID(),

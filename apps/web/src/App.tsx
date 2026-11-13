@@ -1,7 +1,13 @@
 import { type ReactElement, useEffect, useState } from 'react';
 import type { BearLoadState } from './scripts/types';
 import { loadBears } from './scripts/bearService';
-import { Navigate, Route, Routes, useSearchParams } from 'react-router';
+import {
+  Navigate,
+  Route,
+  Routes,
+  useMatch,
+  useSearchParams,
+} from 'react-router';
 import Header from './components/layout/Header';
 import Navigation from './components/layout/Navigation';
 import Footer from './components/layout/Footer';
@@ -14,6 +20,8 @@ export default function App(): ReactElement {
   });
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('q') ?? '';
+  const isBearDetail = useMatch('/bears/:bearId') !== null;
+  const bearNameFilter = isBearDetail ? '' : searchQuery.trim();
 
   function handleSearchQueryChange(query: string): void {
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -30,7 +38,7 @@ export default function App(): ReactElement {
     async function fetchBears(): Promise<void> {
       setBearLoadState({ status: 'loading' });
       try {
-        const bears = await loadBears();
+        const bears = await loadBears(bearNameFilter);
         if (!requestIsCurrent) {
           return;
         }
@@ -54,7 +62,7 @@ export default function App(): ReactElement {
     return () => {
       requestIsCurrent = false;
     };
-  }, []);
+  }, [bearNameFilter]);
 
   return (
     <>

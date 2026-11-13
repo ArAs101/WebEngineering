@@ -7,6 +7,10 @@ import { CommentSchema, NewCommentSchema } from '../schemas/comment.js';
 import type { BearRepository } from '../repositories/bear-repository.js';
 import type { CommentRepository } from '../repositories/comment-repository.js';
 import { ProblemSchema } from '../schemas/problem.js';
+import {
+  CommentsQuerySchema,
+  encodeCommentCursor,
+} from '../schemas/comment-pagination.js';
 
 interface CommentRoutesOptions {
   bears: BearRepository;
@@ -27,7 +31,8 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         tags: ['Comments'],
         summary: 'List comments for a bear',
         description:
-          'Returns all currently stored comments for an existing bear.',
+          'Returns a page of comments for an existing bear, newest first.',
+        querystring: CommentsQuerySchema,
         params: z.object({
           id: z
             .string()
@@ -60,9 +65,16 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         throw new NotFoundError('Bear');
       }
 
+      const { limit, cursor } = request.query;
+      const rows = await comments.listPage(parsedId.data, limit + 1, cursor);
+      const items = rows.slice(0, limit);
+
       return {
-        items: await comments.findByBearIds([parsedId.data]),
-        nextCursor: null,
+        items,
+        nextCursor:
+          rows.length > limit
+            ? encodeCommentCursor(items[items.length - 1])
+            : null,
       };
     }
   );

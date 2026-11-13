@@ -69,3 +69,57 @@ test('bear and comment routes use injected repositories without PostgreSQL', asy
     nextCursor: null,
   });
 });
+
+test('name filters and comment cursors work through the HTTP interface', async (t) => {
+  const comments = createMemoryCommentRepository();
+  const app = await buildApp({
+    bears: createMemoryBearRepository(fixture),
+    comments,
+    checkDatabase: () => Promise.resolve(),
+    logger: false,
+  });
+  t.after(() => app.close());
+
+  const filtered = await app.inject('/api/bears?q=BROWN');
+  assert.equal(filtered.statusCode, 200);
+  assert.deepEqual(
+    BearSchema.array()
+      .parse(filtered.json())
+      .map((bear) => bear.id),
+    ['ursus-arctos']
+  );
+  assert.deepEqual((await app.inject('/api/bears?q=%25')).json(), []);
+
+  const bearId = 'ursus-arctos';
+  await Promise.all(
+    Array.from({ length: 3 }, () =>
+      comments.create(bearId, { author: 'Test', text: 'Page test' })
+    )
+  );
+
+  const path = '/api/bears/ursus-arctos/comments';
+  const first = await app.inject(path + '?limit=2');
+  assert.equal(first.statusCode, 200);
+  const firstPage = first.json();
+  assert.equal(firstPage.items.length, 2);
+  assert.equal(typeof firstPage.nextCursor, 'string');
+
+  const second = await app.inject(
+    path + '?limit=2&cursor=' + firstPage.nextCursor
+  );
+  assert.equal(second.statusCode, 200);
+  const secondPage = second.json();
+  assert.equal(secondPage.items.length, 1);
+  assert.equal(secondPage.nextCursor, null);
+  assert.equal(
+    new Set(
+      [...firstPage.items, ...secondPage.items].map(
+        (item: { id: string }) => item.id
+      )
+    ).size,
+    3
+  );
+
+  assert.equal((await app.inject(path + '?limit=0')).statusCode, 400);
+  assert.equal((await app.inject(path + '?cursor=invalid')).statusCode, 400);
+});

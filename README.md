@@ -441,4 +441,51 @@ You might have noticed that the base project has a number of accessibility issue
 > _Note your findings here..._
 >
 
+
+### Task 4 in Playground 5 – Index measurement
+
+Measured with PostgreSQL 18.7 in the Docker container and 100,000 test comments in `bears_benchmark`. Both plans measure the same query `EXPLAIN (ANALYZE, BUFFERS)` for the Brown Bear (`ursus-arctos`), sorted by `created_at DESC, id DESC`. `LIMIT 21` covers the 20 entries on the first page plus an additional line to determine the necessity of a follow-up page.
+
+#### Single index on `bear_id`
+
+```text
+Limit  (cost=780.28..780.33 rows=21 width=84) (actual time=2.444..2.450 rows=21.00 loops=1)
+  Buffers: shared hit=185 read=13
+  ->  Sort  (cost=780.28..811.21 rows=12370 width=84) (actual time=2.443..2.446 rows=21.00 loops=1)
+        Sort Key: created_at DESC, id DESC
+        Sort Method: top-N heapsort  Memory: 29kB
+        Buffers: shared hit=185 read=13
+        ->  Index Scan using comments_bear_id_idx on comments  (cost=0.29..446.77 rows=12370 width=84) (actual time=0.034..1.516 rows=12500.00 loops=1)
+              Index Cond: (bear_id = 'ursus-arctos'::text)
+              Index Searches: 1
+              Buffers: shared hit=179 read=13
+Planning:
+  Buffers: shared hit=53 read=1
+Planning Time: 0.322 ms
+Execution Time: 2.473 ms
+```
+
+#### Composite index on `(bear_id, created_at, id)`
+
+```text
+Limit  (cost=0.42..6.29 rows=21 width=84) (actual time=0.015..0.032 rows=21.00 loops=1)
+  Buffers: shared hit=24
+  ->  Index Scan Backward using comments_bear_created_idx on comments  (cost=0.42..3458.77 rows=12370 width=84) (actual time=0.014..0.030 rows=21.00 loops=1)
+        Index Cond: (bear_id = 'ursus-arctos'::text)
+        Index Searches: 1
+        Buffers: shared hit=24
+Planning:
+  Buffers: shared hit=23
+Planning Time: 0.133 ms
+Execution Time: 0.044 ms
+```
+
+| Index | Execution Time |
+| --- | ---: |
+| Single index on `bear_id` | 2.473 ms |
+| Composite index | 0.044 ms |
+
+Using the single-column index, the sorting step processes 12,500 matching rows to determine the first 21. The composite index, when read in reverse, provides the 21 rows directly in the desired order. In this run, the execution time decreased by approximately 98.2%.
+
+
 <p>© 2026 Leon Freudenthaler (Hochschule Campus Wien). All rights reversed.</p>

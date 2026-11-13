@@ -31,8 +31,10 @@ function isApiBear(value: unknown): value is ApiBear {
   );
 }
 
-export async function loadBears(): Promise<Bear[]> {
-  const response = await fetch(apiUrl('/api/bears'));
+export async function loadBears(query = ''): Promise<Bear[]> {
+  const params = new URLSearchParams({ q: query });
+  const path = query === '' ? '/api/bears' : `/api/bears?${params.toString()}`;
+  const response = await fetch(apiUrl(path));
 
   if (!response.ok) {
     throw await errorFromResponse(response, 'Bear API request failed');

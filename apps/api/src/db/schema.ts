@@ -41,6 +41,10 @@ export const comments = pgTable(
       'comments_text_length',
       sql`char_length(${table.text}) BETWEEN 1 AND 2000`
     ),
-    index('comments_bear_id_idx').on(table.bearId),
+    index('comments_bear_created_idx').on(
+      table.bearId,
+      table.createdAt,
+      table.id
+    ),
   ]
 );
