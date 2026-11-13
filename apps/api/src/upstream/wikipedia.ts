@@ -1,10 +1,6 @@
 import { z } from 'zod';
+import { env } from '../env.js';
 import { UpstreamError, UpstreamTimeoutError } from '../errors.js';
-
-const DEFAULT_BASE_URL = 'https://en.wikipedia.org';
-
-const DEFAULT_USER_AGENT =
-  'BearApp/0.1 (https://github.com/ArAs101/WebEngineering)';
 
 const WikipediaWikitextResponse = z.object({
   parse: z.object({
@@ -31,10 +27,7 @@ const WikipediaImageResponse = z.object({
 async function fetchWikipediaJson(
   params: Record<string, string>
 ): Promise<unknown> {
-  const baseUrl = process.env.WIKIPEDIA_BASE_URL ?? DEFAULT_BASE_URL;
-  const userAgent = process.env.USER_AGENT ?? DEFAULT_USER_AGENT;
-
-  const url = new URL('/w/api.php', baseUrl);
+  const url = new URL('/w/api.php', env.WIKIPEDIA_BASE_URL);
 
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
@@ -45,7 +38,7 @@ async function fetchWikipediaJson(
   try {
     response = await fetch(url, {
       headers: {
-        'User-Agent': userAgent,
+        'User-Agent': env.USER_AGENT,
         Accept: 'application/json',
       },
       signal: AbortSignal.timeout(5_000),

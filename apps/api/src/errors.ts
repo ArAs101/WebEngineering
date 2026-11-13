@@ -7,8 +7,8 @@ export abstract class AppError extends Error {
   abstract readonly problemType: string;
   abstract readonly title: string;
 
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = new.target.name;
   }
 }
@@ -55,5 +55,15 @@ export class UpstreamTimeoutError extends AppError {
 
   constructor() {
     super('Wikipedia did not respond in time.');
+  }
+}
+
+export class DatabaseUnavailableError extends AppError {
+  readonly statusCode = 503;
+  readonly problemType = `${PROBLEM_BASE_URI}/database-unavailable`;
+  readonly title = 'Database unavailable';
+
+  constructor(options?: ErrorOptions) {
+    super('The database is currently unavailable.', options);
   }
 }

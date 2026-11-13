@@ -11,7 +11,13 @@ import {
   validatorCompiler,
 } from '@fastify/type-provider-zod';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
-import { AppError, ValidationError } from './errors.js';
+import type { Pool } from 'pg';
+import { env } from './env.js';
+import {
+  AppError,
+  DatabaseUnavailableError,
+  ValidationError,
+} from './errors.js';
 import { bearRoutes } from './routes/bears.js';
 import { commentRoutes } from './routes/comments.js';
 import type { Problem } from './schemas/problem.js';
@@ -77,11 +83,18 @@ function toProblem(error: Error, requestId: string): Problem {
   };
 }
 
-export async function buildApp(): Promise<FastifyInstance> {
+export async function buildApp(pool: Pool): Promise<FastifyInstance> {
   const app = Fastify({
     logger: true,
     requestIdHeader: 'x-request-id',
     genReqId: () => randomUUID(),
+  });
+
+  pool.on('error', (error) => {
+    app.log.warn({ err: error }, 'Idle PostgreSQL connection failed');
+  });
+  app.addHook('onClose', async () => {
+    await pool.end();
   });
 
   app.setValidatorCompiler(validatorCompiler);
@@ -124,13 +137,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     return reply.code(404).type('application/problem+json').send(problem);
   });
 
-  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter((origin) => origin.length > 0);
-
   await app.register(cors, {
-    origin: corsOrigins,
+    origin: env.CORS_ORIGINS,
     methods: ['GET', 'POST', 'DELETE'],
     allowedHeaders: ['content-type', 'x-request-id'],
     exposedHeaders: ['location', 'x-request-id'],
@@ -171,6 +179,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
       const responseGroups = [
         spec.paths?.['/health']?.get?.responses,
+        spec.paths?.['/health/ready']?.get?.responses,
         spec.paths?.['/api/bears']?.get?.responses,
         spec.paths?.['/api/bears/{id}']?.get?.responses,
         spec.paths?.['/api/bears/{id}/comments']?.get?.responses,
@@ -179,7 +188,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       ];
 
       for (const responses of responseGroups) {
-        for (const status of ['400', '404', '500', '502', '504']) {
+        for (const status of ['400', '404', '500', '502', '503', '504']) {
           const response = responses?.[status];
 
           if (
@@ -255,9 +264,36 @@ export async function buildApp(): Promise<FastifyInstance> {
     },
     async () => ({
       status: 'ok' as const,
-      version: process.env.APP_VERSION ?? 'dev',
+      version: env.APP_VERSION,
       uptime: Math.round(process.uptime()),
     })
+  );
+
+  typedApp.get(
+    '/health/ready',
+    {
+      schema: {
+        tags: ['Health'],
+        summary: 'Check database readiness',
+        response: {
+          200: HealthSchema,
+          503: ProblemSchema,
+        },
+      },
+    },
+    async () => {
+      try {
+        await pool.query('SELECT 1');
+      } catch (error: unknown) {
+        throw new DatabaseUnavailableError({ cause: error });
+      }
+
+      return {
+        status: 'ok' as const,
+        version: env.APP_VERSION,
+        uptime: Math.round(process.uptime()),
+      };
+    }
   );
 
   await app.register(bearRoutes);
