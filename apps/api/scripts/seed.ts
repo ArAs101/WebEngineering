@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { createDatabase } from '../src/db/database.js';
 import { createPool } from '../src/db/pool.js';
 import { bears } from '../src/db/schema.js';
-import { env } from '../src/env.js';
+import { readEnv } from '../src/env.js';
 import { BearSchema } from '../src/schemas/bear.js';
 
 const fixture = BearSchema.array()
@@ -11,7 +11,7 @@ const fixture = BearSchema.array()
   .parse(
     JSON.parse(await readFile(new URL('./bears.json', import.meta.url), 'utf8'))
   );
-const pool = createPool(env.DATABASE_URL);
+const pool = createPool(readEnv().DATABASE_URL);
 
 try {
   const db = createDatabase(pool);

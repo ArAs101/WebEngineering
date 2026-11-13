@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { test } from 'node:test';
+import { buildApp } from '../src/app.js';
+import { BearSchema } from '../src/schemas/bear.js';
+import { CommentSchema } from '../src/schemas/comment.js';
+import {
+  createMemoryBearRepository,
+  createMemoryCommentRepository,
+} from './memory-repositories.js';
+
+const fixture = BearSchema.array().parse(
+  JSON.parse(
+    await readFile(new URL('../scripts/bears.json', import.meta.url), 'utf8')
+  )
+);
+
+test('bear and comment routes use injected repositories without PostgreSQL', async (t) => {
+  const bears = createMemoryBearRepository(fixture);
+  const comments = createMemoryCommentRepository();
+  const app = await buildApp({
+    bears,
+    comments,
+    checkDatabase: () => Promise.resolve(),
+    logger: false,
+  });
+  t.after(() => app.close());
+
+  const list = await app.inject('/api/bears');
+  assert.equal(list.statusCode, 200);
+  assert.equal(BearSchema.array().parse(list.json()).length, fixture.length);
+  assert.equal((await app.inject('/api/bears/ursus-arctos')).statusCode, 200);
+  assert.equal((await app.inject('/api/bears/unknown-bear')).statusCode, 404);
+
+  const path = '/api/bears/ursus-arctos/comments';
+  const post = await app.inject({
+    method: 'POST',
+    url: path,
+    payload: { author: 'Test', text: 'A comment.' },
+  });
+  assert.equal(post.statusCode, 201);
+  const comment = CommentSchema.parse(post.json());
+  assert.equal(post.headers.location, `/api/comments/${comment.id}`);
+
+  const polarComment = await comments.create('ursus-maritimus', {
+    author: 'Test',
+    text: 'Another bear.',
+  });
+  const combined = await comments.findByBearIds([
+    'ursus-arctos',
+    'ursus-maritimus',
+  ]);
+  assert.deepEqual(
+    new Set(combined.map((item) => item.id)),
+    new Set([comment.id, polarComment.id])
+  );
+
+  const listComments = await app.inject(path);
+  assert.equal(listComments.statusCode, 200);
+  assert.deepEqual(listComments.json(), { items: [comment], nextCursor: null });
+
+  const remove = await app.inject({
+    method: 'DELETE',
+    url: `/api/comments/${comment.id}`,
+  });
+  assert.equal(remove.statusCode, 204);
+  assert.deepEqual((await app.inject(path)).json(), {
+    items: [],
+    nextCursor: null,
+  });
+});

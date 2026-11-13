@@ -21,11 +21,13 @@ const EnvSchema = z.object({
     .pipe(z.array(httpUrl)),
 });
 
-const result = EnvSchema.safeParse(process.env);
+export function readEnv(): z.infer<typeof EnvSchema> {
+  const result = EnvSchema.safeParse(process.env);
 
-if (!result.success) {
-  const fields = result.error.issues.map((issue) => issue.path.join('.'));
-  throw new Error(`Invalid environment configuration: ${fields.join(', ')}`);
+  if (!result.success) {
+    const fields = result.error.issues.map((issue) => issue.path.join('.'));
+    throw new Error(`Invalid environment configuration: ${fields.join(', ')}`);
+  }
+
+  return result.data;
 }
-
-export const env = result.data;

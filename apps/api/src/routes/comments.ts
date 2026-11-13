@@ -4,16 +4,19 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { BearId } from '../schemas/bear.js';
 import { CommentSchema, NewCommentSchema } from '../schemas/comment.js';
-import type { Database } from '../db/database.js';
-import { getBearById } from '../services/bear-service.js';
-import { createCommentService } from '../services/comment-service.js';
+import type { BearRepository } from '../repositories/bear-repository.js';
+import type { CommentRepository } from '../repositories/comment-repository.js';
 import { ProblemSchema } from '../schemas/problem.js';
 
-export const commentRoutes: FastifyPluginAsync<{ db: Database }> = async (
+interface CommentRoutesOptions {
+  bears: BearRepository;
+  comments: CommentRepository;
+}
+
+export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
   app,
-  { db }
+  { bears, comments }
 ) => {
-  const comments = createCommentService();
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
 
   // GET /api/bears/:id/comments
@@ -53,12 +56,12 @@ export const commentRoutes: FastifyPluginAsync<{ db: Database }> = async (
         );
       }
 
-      if ((await getBearById(db, parsedId.data)) === null) {
+      if ((await bears.findById(parsedId.data)) === null) {
         throw new NotFoundError('Bear');
       }
 
       return {
-        items: comments.findByBearId(parsedId.data),
+        items: await comments.findByBearIds([parsedId.data]),
         nextCursor: null,
       };
     }
@@ -110,11 +113,11 @@ export const commentRoutes: FastifyPluginAsync<{ db: Database }> = async (
         throw new ValidationError(issues, 'The comment could not be accepted.');
       }
 
-      if ((await getBearById(db, parsedId.data)) === null) {
+      if ((await bears.findById(parsedId.data)) === null) {
         throw new NotFoundError('Bear');
       }
 
-      const comment = comments.create(parsedId.data, parsedBody.data);
+      const comment = await comments.create(parsedId.data, parsedBody.data);
 
       return await reply
         .code(201)
@@ -154,7 +157,7 @@ export const commentRoutes: FastifyPluginAsync<{ db: Database }> = async (
         );
       }
 
-      if (!comments.remove(parsedId.data)) {
+      if (!(await comments.remove(parsedId.data))) {
         throw new NotFoundError('Comment');
       }
 

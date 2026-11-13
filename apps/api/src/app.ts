@@ -11,9 +11,6 @@ import {
   validatorCompiler,
 } from '@fastify/type-provider-zod';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
-import type { Pool } from 'pg';
-import { createDatabase } from './db/database.js';
-import { env } from './env.js';
 import {
   AppError,
   DatabaseUnavailableError,
@@ -21,6 +18,8 @@ import {
 } from './errors.js';
 import { bearRoutes } from './routes/bears.js';
 import { commentRoutes } from './routes/comments.js';
+import type { BearRepository } from './repositories/bear-repository.js';
+import type { CommentRepository } from './repositories/comment-repository.js';
 import type { Problem } from './schemas/problem.js';
 import { HealthSchema } from './schemas/health.js';
 import { ProblemSchema } from './schemas/problem.js';
@@ -84,18 +83,25 @@ function toProblem(error: Error, requestId: string): Problem {
   };
 }
 
-export async function buildApp(pool: Pool): Promise<FastifyInstance> {
+interface AppOptions {
+  bears: BearRepository;
+  comments: CommentRepository;
+  checkDatabase: () => Promise<void>;
+  closeDatabase?: () => Promise<void>;
+  appVersion?: string;
+  corsOrigins?: string[];
+  logger?: boolean;
+}
+
+export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: true,
+    logger: options.logger ?? true,
     requestIdHeader: 'x-request-id',
     genReqId: () => randomUUID(),
   });
 
-  pool.on('error', (error) => {
-    app.log.warn({ err: error }, 'Idle PostgreSQL connection failed');
-  });
   app.addHook('onClose', async () => {
-    await pool.end();
+    await options.closeDatabase?.();
   });
 
   app.setValidatorCompiler(validatorCompiler);
@@ -139,7 +145,7 @@ export async function buildApp(pool: Pool): Promise<FastifyInstance> {
   });
 
   await app.register(cors, {
-    origin: env.CORS_ORIGINS,
+    origin: options.corsOrigins ?? [],
     methods: ['GET', 'POST', 'DELETE'],
     allowedHeaders: ['content-type', 'x-request-id'],
     exposedHeaders: ['location', 'x-request-id'],
@@ -265,7 +271,7 @@ export async function buildApp(pool: Pool): Promise<FastifyInstance> {
     },
     async () => ({
       status: 'ok' as const,
-      version: env.APP_VERSION,
+      version: options.appVersion ?? 'dev',
       uptime: Math.round(process.uptime()),
     })
   );
@@ -284,21 +290,23 @@ export async function buildApp(pool: Pool): Promise<FastifyInstance> {
     },
     async () => {
       try {
-        await pool.query('SELECT 1');
+        await options.checkDatabase();
       } catch (error: unknown) {
         throw new DatabaseUnavailableError({ cause: error });
       }
 
       return {
         status: 'ok' as const,
-        version: env.APP_VERSION,
+        version: options.appVersion ?? 'dev',
         uptime: Math.round(process.uptime()),
       };
     }
   );
 
-  const db = createDatabase(pool);
-  await app.register(bearRoutes, { db });
-  await app.register(commentRoutes, { db });
+  await app.register(bearRoutes, { bears: options.bears });
+  await app.register(commentRoutes, {
+    bears: options.bears,
+    comments: options.comments,
+  });
   return await app;
 }
