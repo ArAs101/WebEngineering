@@ -26,7 +26,8 @@ export function createDrizzleCommentReportRepository(
       const [row] = await db
         .select(reportFields)
         .from(comments)
-        .where(eq(comments.id, id));
+        .where(eq(comments.id, id))
+        .for('update');
       return row === undefined ? null : toReportStatus(row);
     },
     async save(status) {

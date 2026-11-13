@@ -10,12 +10,14 @@ import { createReportComment } from './services/report-comment.js';
 const env = readEnv();
 const pool = createPool(env.DATABASE_URL);
 const db = createDatabase(pool);
-const reports = createDrizzleCommentReportRepository(db);
 const app = await buildApp({
   bears: createDrizzleBearRepository(db),
   comments: createDrizzleCommentRepository(db),
   reportComment: createReportComment(
-    async (operation) => await operation(reports)
+    async (operation) =>
+      await db.transaction(
+        async (tx) => await operation(createDrizzleCommentReportRepository(tx))
+      )
   ),
   appVersion: env.APP_VERSION,
   corsOrigins: env.CORS_ORIGINS,

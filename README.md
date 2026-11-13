@@ -488,4 +488,9 @@ Execution Time: 0.044 ms
 Using the single-column index, the sorting step processes 12,500 matching rows to determine the first 21. The composite index, when read in reverse, provides the 21 rows directly in the desired order. In this run, the execution time decreased by approximately 98.2%.
 
 
+### Task 5 in Playground 5 – Concurrent comment reports
+
+Each run creates a fresh comment and sends 50 concurrent reports to the same comment ID. The script reads the final `report_count` directly from PostgreSQL. In the naive version, concurrent requests can read the same count and overwrite one another’s increments. The fixed version reads the row with `SELECT FOR UPDATE` and saves the increment within the same transaction.
+
+
 <p>© 2026 Leon Freudenthaler (Hochschule Campus Wien). All rights reversed.</p>
