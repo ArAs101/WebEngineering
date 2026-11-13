@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "node --import tsx scripts/seed.ts",
-    "test": "node --import tsx --test test/routes.test.ts"
+    "test": "node --import tsx --test test/routes.test.ts",
+    "report:race": "node --import tsx scripts/report-race.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.4.0",

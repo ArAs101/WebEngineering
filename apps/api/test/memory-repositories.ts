@@ -3,6 +3,8 @@ import type { BearRepository } from '../src/repositories/bear-repository.js';
 import type { CommentRepository } from '../src/repositories/comment-repository.js';
 import type { Bear } from '../src/schemas/bear.js';
 import type { Comment } from '../src/schemas/comment.js';
+import type { CommentReportRepository } from '../src/repositories/comment-report-repository.js';
+import type { CommentReportStatus } from '../src/schemas/comment-report.js';
 
 export function createMemoryBearRepository(fixture: Bear[]): BearRepository {
   const bears = new Map(fixture.map((bear) => [bear.id, bear]));
@@ -20,19 +22,25 @@ export function createMemoryBearRepository(fixture: Bear[]): BearRepository {
   };
 }
 
-export function createMemoryCommentRepository(): CommentRepository {
+export function createMemoryCommentRepository(): CommentRepository &
+  CommentReportRepository {
   const comments = new Map<string, Comment>();
+  const reports = new Map<string, CommentReportStatus>();
+
+  function isVisible(comment: Comment): boolean {
+    return reports.get(comment.id)?.hiddenAt === null;
+  }
 
   return {
     findByBearIds: (bearIds) =>
       Promise.resolve(
-        [...comments.values()].filter((comment) =>
-          bearIds.includes(comment.bearId)
+        [...comments.values()].filter(
+          (comment) => bearIds.includes(comment.bearId) && isVisible(comment)
         )
       ),
     listPage: (bearId, limit, after) => {
       const items = [...comments.values()]
-        .filter((comment) => comment.bearId === bearId)
+        .filter((comment) => comment.bearId === bearId && isVisible(comment))
         .filter(
           (comment) =>
             after === undefined ||
@@ -55,8 +63,24 @@ export function createMemoryCommentRepository(): CommentRepository {
         createdAt: new Date().toISOString(),
       };
       comments.set(comment.id, comment);
+      reports.set(comment.id, {
+        id: comment.id,
+        reportCount: 0,
+        hiddenAt: null,
+      });
       return Promise.resolve(comment);
     },
-    remove: (id) => Promise.resolve(comments.delete(id)),
+    remove: (id) => {
+      reports.delete(id);
+      return Promise.resolve(comments.delete(id));
+    },
+    find: (id) => Promise.resolve(reports.get(id) ?? null),
+    save: (status) => {
+      if (!reports.has(status.id)) {
+        return Promise.resolve(null);
+      }
+      reports.set(status.id, status);
+      return Promise.resolve(status);
+    },
   };
 }

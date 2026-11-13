@@ -23,6 +23,7 @@ import type { CommentRepository } from './repositories/comment-repository.js';
 import type { Problem } from './schemas/problem.js';
 import { HealthSchema } from './schemas/health.js';
 import { ProblemSchema } from './schemas/problem.js';
+import type { ReportComment } from './services/report-comment.js';
 
 const PROBLEM_BASE_URI = 'https://bears.example/problems';
 
@@ -86,6 +87,7 @@ function toProblem(error: Error, requestId: string): Problem {
 interface AppOptions {
   bears: BearRepository;
   comments: CommentRepository;
+  reportComment: ReportComment;
   checkDatabase: () => Promise<void>;
   closeDatabase?: () => Promise<void>;
   appVersion?: string;
@@ -192,6 +194,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         spec.paths?.['/api/bears/{id}/comments']?.get?.responses,
         spec.paths?.['/api/bears/{id}/comments']?.post?.responses,
         spec.paths?.['/api/comments/{commentId}']?.delete?.responses,
+        spec.paths?.['/api/comments/{commentId}/report']?.post?.responses,
       ];
 
       for (const responses of responseGroups) {
@@ -307,6 +310,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(commentRoutes, {
     bears: options.bears,
     comments: options.comments,
+    reportComment: options.reportComment,
   });
   return await app;
 }

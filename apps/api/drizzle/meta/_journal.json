@@ -15,6 +15,13 @@
       "when": 1794600710503,
       "tag": "0001_comment-pagination",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794604775838,
+      "tag": "0002_comment-reporting",
+      "breakpoints": true
     }
   ]
 }

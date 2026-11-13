@@ -8,6 +8,8 @@ import {
   createMemoryBearRepository,
   createMemoryCommentRepository,
 } from './memory-repositories.js';
+import { CommentReportStatusSchema } from '../src/schemas/comment-report.js';
+import { createReportComment } from '../src/services/report-comment.js';
 
 const fixture = BearSchema.array().parse(
   JSON.parse(
@@ -21,6 +23,7 @@ test('bear and comment routes use injected repositories without PostgreSQL', asy
   const app = await buildApp({
     bears,
     comments,
+    reportComment: createReportComment((operation) => operation(comments)),
     checkDatabase: () => Promise.resolve(),
     logger: false,
   });
@@ -75,6 +78,7 @@ test('name filters and comment cursors work through the HTTP interface', async (
   const app = await buildApp({
     bears: createMemoryBearRepository(fixture),
     comments,
+    reportComment: createReportComment((operation) => operation(comments)),
     checkDatabase: () => Promise.resolve(),
     logger: false,
   });
@@ -122,4 +126,43 @@ test('name filters and comment cursors work through the HTTP interface', async (
 
   assert.equal((await app.inject(path + '?limit=0')).statusCode, 400);
   assert.equal((await app.inject(path + '?cursor=invalid')).statusCode, 400);
+});
+
+test('the third report hides the comment and later reports keep the timestamp', async (t) => {
+  const comments = createMemoryCommentRepository();
+  const app = await buildApp({
+    bears: createMemoryBearRepository(fixture),
+    comments,
+    reportComment: createReportComment((operation) => operation(comments)),
+    checkDatabase: () => Promise.resolve(),
+    logger: false,
+  });
+  t.after(() => app.close());
+
+  const bearId = 'ursus-arctos';
+  const { id } = await comments.create(bearId, {
+    author: 'Test',
+    text: 'Reported comment',
+  });
+  const listUrl = `/api/bears/${bearId}/comments`;
+  const reportUrl = `/api/comments/${id}/report`;
+  let hiddenAt: string | null = null;
+
+  for (let count = 1; count <= 4; count += 1) {
+    const response = await app.inject({ method: 'POST', url: reportUrl });
+    assert.equal(response.statusCode, 200);
+    const report = CommentReportStatusSchema.parse(response.json());
+    assert.equal(report.reportCount, count);
+
+    const list = await app.inject(listUrl);
+    assert.equal(list.statusCode, 200);
+    assert.equal(list.json().items.length, count < 3 ? 1 : 0);
+    assert.equal(report.hiddenAt === null, count < 3);
+
+    if (count === 3) {
+      hiddenAt = report.hiddenAt;
+    } else if (count === 4) {
+      assert.equal(report.hiddenAt, hiddenAt);
+    }
+  }
 });

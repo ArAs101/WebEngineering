@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   check,
   index,
+  integer,
   pgTable,
   text,
   timestamp,
@@ -31,6 +32,8 @@ export const comments = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, precision: 3 })
       .notNull()
       .defaultNow(),
+    reportCount: integer('report_count').notNull().default(0),
+    hiddenAt: timestamp('hidden_at', { withTimezone: true, precision: 3 }),
   },
   (table) => [
     check(

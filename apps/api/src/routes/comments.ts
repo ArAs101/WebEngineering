@@ -11,15 +11,18 @@ import {
   CommentsQuerySchema,
   encodeCommentCursor,
 } from '../schemas/comment-pagination.js';
+import { CommentReportStatusSchema } from '../schemas/comment-report.js';
+import type { ReportComment } from '../services/report-comment.js';
 
 interface CommentRoutesOptions {
   bears: BearRepository;
   comments: CommentRepository;
+  reportComment: ReportComment;
 }
 
 export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
   app,
-  { bears, comments }
+  { bears, comments, reportComment }
 ) => {
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
 
@@ -175,5 +178,23 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
 
       return await reply.code(204).send();
     }
+  );
+
+  typedApp.post(
+    '/api/comments/:commentId/report',
+    {
+      schema: {
+        tags: ['Comments'],
+        summary: 'Report an existing comment',
+        params: z.object({ commentId: z.uuid() }),
+        response: {
+          200: CommentReportStatusSchema,
+          400: ProblemSchema,
+          404: ProblemSchema,
+          500: ProblemSchema,
+        },
+      },
+    },
+    async (request) => await reportComment(request.params.commentId)
   );
 };

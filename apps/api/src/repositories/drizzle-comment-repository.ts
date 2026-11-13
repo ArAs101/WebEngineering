@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { Database } from '../db/database.js';
 import { comments } from '../db/schema.js';
 import type { Comment } from '../schemas/comment.js';
@@ -26,7 +26,9 @@ export function createDrizzleCommentRepository(
       const rows = await db
         .select()
         .from(comments)
-        .where(inArray(comments.bearId, bearIds))
+        .where(
+          and(inArray(comments.bearId, bearIds), isNull(comments.hiddenAt))
+        )
         .orderBy(asc(comments.createdAt), asc(comments.id));
       return rows.map(toComment);
     },

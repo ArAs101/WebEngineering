@@ -4,13 +4,19 @@ import { createPool } from './db/pool.js';
 import { readEnv } from './env.js';
 import { createDrizzleBearRepository } from './repositories/drizzle-bear-repository.js';
 import { createDrizzleCommentRepository } from './repositories/drizzle-comment-repository.js';
+import { createDrizzleCommentReportRepository } from './repositories/drizzle-comment-report-repository.js';
+import { createReportComment } from './services/report-comment.js';
 
 const env = readEnv();
 const pool = createPool(env.DATABASE_URL);
 const db = createDatabase(pool);
+const reports = createDrizzleCommentReportRepository(db);
 const app = await buildApp({
   bears: createDrizzleBearRepository(db),
   comments: createDrizzleCommentRepository(db),
+  reportComment: createReportComment(
+    async (operation) => await operation(reports)
+  ),
   appVersion: env.APP_VERSION,
   corsOrigins: env.CORS_ORIGINS,
   checkDatabase: async () => {
