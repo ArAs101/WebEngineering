@@ -12,6 +12,7 @@ import {
 } from '@fastify/type-provider-zod';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import type { Pool } from 'pg';
+import { createDatabase } from './db/database.js';
 import { env } from './env.js';
 import {
   AppError,
@@ -188,7 +189,7 @@ export async function buildApp(pool: Pool): Promise<FastifyInstance> {
       ];
 
       for (const responses of responseGroups) {
-        for (const status of ['400', '404', '500', '502', '503', '504']) {
+        for (const status of ['400', '404', '500', '503']) {
           const response = responses?.[status];
 
           if (
@@ -296,7 +297,8 @@ export async function buildApp(pool: Pool): Promise<FastifyInstance> {
     }
   );
 
-  await app.register(bearRoutes);
-  await app.register(commentRoutes);
+  const db = createDatabase(pool);
+  await app.register(bearRoutes, { db });
+  await app.register(commentRoutes, { db });
   return await app;
 }

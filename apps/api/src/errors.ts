@@ -38,26 +38,6 @@ export class NotFoundError extends AppError {
   }
 }
 
-export class UpstreamError extends AppError {
-  readonly statusCode = 502;
-  readonly problemType = `${PROBLEM_BASE_URI}/upstream`;
-  readonly title = 'Upstream unavailable';
-
-  constructor() {
-    super('Wikipedia is unavailable or returned invalid data.');
-  }
-}
-
-export class UpstreamTimeoutError extends AppError {
-  readonly statusCode = 504;
-  readonly problemType = `${PROBLEM_BASE_URI}/upstream-timeout`;
-  readonly title = 'Upstream timeout';
-
-  constructor() {
-    super('Wikipedia did not respond in time.');
-  }
-}
-
 export class DatabaseUnavailableError extends AppError {
   readonly statusCode = 503;
   readonly problemType = `${PROBLEM_BASE_URI}/database-unavailable`;

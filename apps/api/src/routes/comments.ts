@@ -4,16 +4,15 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { BearId } from '../schemas/bear.js';
 import { CommentSchema, NewCommentSchema } from '../schemas/comment.js';
-import { getBears } from '../services/bear-service.js';
+import type { Database } from '../db/database.js';
+import { getBearById } from '../services/bear-service.js';
 import { createCommentService } from '../services/comment-service.js';
 import { ProblemSchema } from '../schemas/problem.js';
 
-async function bearExists(bearId: string): Promise<boolean> {
-  const bears = await getBears();
-  return bears.some((bear) => bear.id === bearId);
-}
-
-export const commentRoutes: FastifyPluginAsync = async (app) => {
+export const commentRoutes: FastifyPluginAsync<{ db: Database }> = async (
+  app,
+  { db }
+) => {
   const comments = createCommentService();
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
 
@@ -39,8 +38,6 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
           400: ProblemSchema,
           404: ProblemSchema,
           500: ProblemSchema,
-          502: ProblemSchema,
-          504: ProblemSchema,
         },
       },
     },
@@ -56,7 +53,7 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      if (!(await bearExists(parsedId.data))) {
+      if ((await getBearById(db, parsedId.data)) === null) {
         throw new NotFoundError('Bear');
       }
 
@@ -87,8 +84,6 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
           400: ProblemSchema,
           404: ProblemSchema,
           500: ProblemSchema,
-          502: ProblemSchema,
-          504: ProblemSchema,
         },
       },
     },
@@ -115,7 +110,7 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
         throw new ValidationError(issues, 'The comment could not be accepted.');
       }
 
-      if (!(await bearExists(parsedId.data))) {
+      if ((await getBearById(db, parsedId.data)) === null) {
         throw new NotFoundError('Bear');
       }
 

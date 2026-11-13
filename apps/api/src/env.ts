@@ -19,11 +19,6 @@ const EnvSchema = z.object({
         .filter(Boolean)
     )
     .pipe(z.array(httpUrl)),
-  WIKIPEDIA_BASE_URL: httpUrl.default('https://en.wikipedia.org'),
-  USER_AGENT: z
-    .string()
-    .min(1)
-    .default('BearApp/0.1 (https://github.com/ArAs101/WebEngineering)'),
 });
 
 const result = EnvSchema.safeParse(process.env);

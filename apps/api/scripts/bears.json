@@ -1,0 +1,58 @@
+[
+  {
+    "id": "ailuropoda-melanoleuca",
+    "name": "Giant panda",
+    "binomial": "Ailuropoda melanoleuca",
+    "imageUrl": null,
+    "range": "Bamboo forests in central China"
+  },
+  {
+    "id": "tremarctos-ornatus",
+    "name": "Spectacled bear",
+    "binomial": "Tremarctos ornatus",
+    "imageUrl": null,
+    "range": "Andean regions of South America"
+  },
+  {
+    "id": "helarctos-malayanus",
+    "name": "Sun bear",
+    "binomial": "Helarctos malayanus",
+    "imageUrl": null,
+    "range": "Tropical forests of Southeast Asia"
+  },
+  {
+    "id": "melursus-ursinus",
+    "name": "Sloth bear",
+    "binomial": "Melursus ursinus",
+    "imageUrl": null,
+    "range": "The Indian subcontinent"
+  },
+  {
+    "id": "ursus-americanus",
+    "name": "American black bear",
+    "binomial": "Ursus americanus",
+    "imageUrl": null,
+    "range": "Forests and mountains of North America"
+  },
+  {
+    "id": "ursus-thibetanus",
+    "name": "Asian black bear",
+    "binomial": "Ursus thibetanus",
+    "imageUrl": null,
+    "range": "Southern and eastern Asia"
+  },
+  {
+    "id": "ursus-arctos",
+    "name": "Brown bear",
+    "binomial": "Ursus arctos",
+    "imageUrl": null,
+    "range": "Northern North America, Europe and northern Asia"
+  },
+  {
+    "id": "ursus-maritimus",
+    "name": "Polar bear",
+    "binomial": "Ursus maritimus",
+    "imageUrl": null,
+    "range": "Arctic regions of North America and Eurasia"
+  }
+]

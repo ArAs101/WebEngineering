@@ -3,10 +3,14 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { BearId, BearSchema } from '../schemas/bear.js';
-import { getBears } from '../services/bear-service.js';
+import type { Database } from '../db/database.js';
+import { getBearById, getBears } from '../services/bear-service.js';
 import { ProblemSchema } from '../schemas/problem.js';
 
-export const bearRoutes: FastifyPluginAsync = async (app) => {
+export const bearRoutes: FastifyPluginAsync<{ db: Database }> = async (
+  app,
+  { db }
+) => {
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
   // GET /api/bears
   typedApp.get(
@@ -15,17 +19,15 @@ export const bearRoutes: FastifyPluginAsync = async (app) => {
       schema: {
         tags: ['Bears'],
         summary: 'List all bears',
-        description: 'Returns the bear species provided by the BFF.',
+        description: 'Returns the stored bear species.',
         response: {
           200: BearSchema.array(),
           500: ProblemSchema,
-          502: ProblemSchema,
-          504: ProblemSchema,
         },
       },
     },
     async () => {
-      return await getBears();
+      return await getBears(db);
     }
   );
 
@@ -67,11 +69,9 @@ export const bearRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const bears = await getBears();
+      const bear = await getBearById(db, parsedId.data);
 
-      const bear = bears.find((candidate) => candidate.id === parsedId.data);
-
-      if (bear === undefined) {
+      if (bear === null) {
         throw new NotFoundError('Bear');
       }
 

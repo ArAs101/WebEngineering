@@ -17,12 +17,17 @@
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint \"apps/*/src/**/*.{js,jsx,ts,tsx}\"",
     "format:check": "prettier --check \"apps/*/src/**/*.{js,jsx,ts,tsx}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:generate": "npm run db:generate -w apps/api --",
+    "db:migrate": "npm run db:migrate -w apps/api",
+    "db:seed": "npm run db:seed -w apps/api"
   },
   "devDependencies": {
-    "concurrently": "^10.0.6",
     "@typescript-eslint/eslint-plugin": "6.21.0",
     "@typescript-eslint/parser": "6.21.0",
+    "concurrently": "^10.0.6",
+    "drizzle-kit": "^0.31.11",
+    "drizzle-orm": "^0.45.4",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-config-standard-with-typescript": "^43.0.1",
