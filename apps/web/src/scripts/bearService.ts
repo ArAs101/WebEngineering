@@ -1,3 +1,4 @@
+import type { SyntheticEvent } from 'react';
 import type { Bear } from './types';
 import { errorFromResponse } from './apiError';
 import { apiUrl } from './apiUrl';
@@ -13,6 +14,13 @@ interface ApiBear {
   binomial: string;
   range: string;
   imageUrl: string | null;
+}
+
+export function showBearPlaceholder(
+  event: SyntheticEvent<HTMLImageElement>
+): void {
+  const image = event.currentTarget;
+  if (image.src !== PLACEHOLDER_IMAGE) image.src = PLACEHOLDER_IMAGE;
 }
 
 function isApiBear(value: unknown): value is ApiBear {

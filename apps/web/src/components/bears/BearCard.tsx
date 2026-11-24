@@ -1,7 +1,8 @@
+import { Link } from 'react-router';
 import type { ReactElement } from 'react';
 import type { Bear } from '../../scripts/types';
-import { Link } from 'react-router';
 import HighlightedText from '../search/HighlightedText';
+import { showBearPlaceholder } from '../../scripts/bearService';
 
 interface BearCardProps {
   bear: Bear;
@@ -21,6 +22,7 @@ export default function BearCard({
     <div className="bear">
       <img
         src={bear.image}
+        onError={showBearPlaceholder}
         alt={`Image of ${bear.name}`}
         className="bear-image"
       />

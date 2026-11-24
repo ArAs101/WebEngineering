@@ -4,6 +4,7 @@ import type { BearLoadState } from '../scripts/types';
 import RelatedLinks from '../components/layout/RelatedLinks';
 import HighlightedText from '../components/search/HighlightedText';
 import CommentsSection from '../components/comments/CommentsSection';
+import { showBearPlaceholder } from '../scripts/bearService';
 
 interface BearDetailPageProps {
   bearLoadState: BearLoadState;
@@ -70,6 +71,7 @@ export default function BearDetailPage({
         <img
           src={bear.image}
           alt={`Image of ${bear.name}`}
+          onError={showBearPlaceholder}
           className="bear-image"
         />
 

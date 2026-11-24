@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { sql } from 'drizzle-orm';
 import { createDatabase } from '../src/db/database.js';
 import { createPool } from '../src/db/pool.js';
 import { bears } from '../src/db/schema.js';
@@ -18,17 +17,8 @@ try {
   await db
     .insert(bears)
     .values(fixture)
-    .onConflictDoUpdate({
-      target: bears.id,
-      set: {
-        name: sql`excluded.name`,
-        binomial: sql`excluded.binomial`,
-        imageUrl: sql`excluded.image_url`,
-        range: sql`excluded.range`,
-        fetchedAt: sql`excluded.fetched_at`,
-      },
-    });
-  console.log(`Upserted ${fixture.length} bear species.`);
+    .onConflictDoNothing({ target: bears.id });
+  console.log('Missing bear fixtures inserted.');
 } finally {
   await pool.end();
 }
