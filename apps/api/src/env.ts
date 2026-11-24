@@ -21,8 +21,13 @@ const EnvSchema = z.object({
     .pipe(z.array(httpUrl)),
 });
 
-export function readEnv(): z.infer<typeof EnvSchema> {
-  const result = EnvSchema.safeParse(process.env);
+const ServerEnvSchema = EnvSchema.extend({
+  SESSION_SECRET: z.string().min(32),
+  TRUSTED_PROXY_IP: z.union([z.ipv4(), z.ipv6()]).optional(),
+});
+
+function parseEnv<S extends z.ZodType>(schema: S): z.output<S> {
+  const result = schema.safeParse(process.env);
 
   if (!result.success) {
     const fields = result.error.issues.map((issue) => issue.path.join('.'));
@@ -30,4 +35,12 @@ export function readEnv(): z.infer<typeof EnvSchema> {
   }
 
   return result.data;
+}
+
+export function readEnv(): z.infer<typeof EnvSchema> {
+  return parseEnv(EnvSchema);
+}
+
+export function readServerEnv(): z.infer<typeof ServerEnvSchema> {
+  return parseEnv(ServerEnvSchema);
 }

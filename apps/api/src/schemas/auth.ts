@@ -17,6 +17,10 @@ export const RegisterBodySchema = z.strictObject({
     }),
 });
 
+export const LoginBodySchema = RegisterBodySchema.extend({
+  password: z.string().min(1).meta({ format: 'password', writeOnly: true }),
+});
+
 export const PublicUserSchema = z.object({
   id: z.uuid(),
   email: z.email(),

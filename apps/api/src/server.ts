@@ -1,20 +1,27 @@
 import { buildApp } from './app.js';
 import { createDatabase } from './db/database.js';
 import { createPool } from './db/pool.js';
-import { readEnv } from './env.js';
+import { readServerEnv } from './env.js';
 import { createDrizzleBearRepository } from './repositories/drizzle-bear-repository.js';
 import { createDrizzleCommentRepository } from './repositories/drizzle-comment-repository.js';
 import { createDrizzleCommentReportRepository } from './repositories/drizzle-comment-report-repository.js';
 import { createReportComment } from './services/report-comment.js';
 import { createDrizzleUserRepository } from './repositories/drizzle-user-repository.js';
+import { createPostgresSessionStore } from './repositories/postgres-session-store.js';
 
-const env = readEnv();
+const env = readServerEnv();
 const pool = createPool(env.DATABASE_URL);
 const db = createDatabase(pool);
 const app = await buildApp({
   bears: createDrizzleBearRepository(db),
   comments: createDrizzleCommentRepository(db),
   users: createDrizzleUserRepository(db),
+  session: {
+    secret: env.SESSION_SECRET,
+    secure: env.NODE_ENV === 'production',
+    store: createPostgresSessionStore(db),
+  },
+  trustedProxyIp: env.TRUSTED_PROXY_IP,
   reportComment: createReportComment(
     async (operation) =>
       await db.transaction(

@@ -14,8 +14,57 @@ import Footer from './components/layout/Footer';
 import BearListPage from './pages/BearListPage';
 import BearDetailPage from './pages/BearDetailPage';
 import RegisterPage from './pages/RegisterPage';
+import LoginPage from './pages/LoginPage';
+import {
+  getCurrentUser,
+  logoutUser,
+  type PublicUser,
+} from './scripts/authService';
 
 export default function App(): ReactElement {
+  const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
+  const [accountError, setAccountError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void getCurrentUser(controller.signal)
+      .then((account) => {
+        if (!controller.signal.aborted) setUser(account);
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setAccountError(
+            error instanceof Error ? error.message : 'Could not load account.'
+          );
+          setUser(null);
+        }
+      });
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  function handleLogin(account: PublicUser): void {
+    setAccountError('');
+    setUser(account);
+  }
+
+  async function handleLogout(): Promise<void> {
+    setLoggingOut(true);
+    setAccountError('');
+    try {
+      await logoutUser();
+      setUser(null);
+    } catch (error: unknown) {
+      setAccountError(
+        error instanceof Error ? error.message : 'Logout failed.'
+      );
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   const [bearLoadState, setBearLoadState] = useState<BearLoadState>({
     status: 'loading',
   });
@@ -72,11 +121,41 @@ export default function App(): ReactElement {
       <Navigation
         searchQuery={searchQuery}
         onSearchQueryChange={handleSearchQueryChange}
+        anonymous={user === null}
       />
+
+      {user != null && (
+        <div className="account-status">
+          <span>Signed in as {user.email}</span>
+          <button
+            type="button"
+            disabled={loggingOut}
+            onClick={() => {
+              void handleLogout();
+            }}
+          >
+            {loggingOut ? 'Logging out…' : 'Log out'}
+          </button>
+        </div>
+      )}
+      {accountError !== '' && <p role="alert">{accountError}</p>}
 
       <main>
         <Routes>
           <Route path="/" element={<Navigate to="/bears" replace />} />
+
+          <Route
+            path="/login"
+            element={
+              user === undefined ? (
+                <p role="status">Checking your session…</p>
+              ) : user === null ? (
+                <LoginPage onLogin={handleLogin} />
+              ) : (
+                <Navigate to="/bears" replace />
+              )
+            }
+          />
 
           <Route path="/register" element={<RegisterPage />} />
 

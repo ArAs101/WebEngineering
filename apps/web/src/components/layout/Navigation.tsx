@@ -5,11 +5,13 @@ import SearchForm from '../search/SearchForm';
 interface NavigationProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  anonymous: boolean;
 }
 
 export default function Navigation({
   searchQuery,
   onSearchQueryChange,
+  anonymous,
 }: NavigationProps): ReactElement {
   return (
     <nav className="nav">
@@ -17,9 +19,16 @@ export default function Navigation({
         <li>
           <Link to="/bears">Home</Link>
         </li>
-        <li>
-          <Link to="/register">Register</Link>
-        </li>
+        {anonymous && (
+          <>
+            <li>
+              <Link to="/login">Log in</Link>
+            </li>
+            <li>
+              <Link to="/register">Register</Link>
+            </li>
+          </>
+        )}
         <li>
           <a href="#">Our team</a>
         </li>

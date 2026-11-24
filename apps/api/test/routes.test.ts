@@ -13,6 +13,16 @@ import { CommentReportStatusSchema } from '../src/schemas/comment-report.js';
 import { createReportComment } from '../src/services/report-comment.js';
 import { verify } from 'argon2';
 import type { PublicUser } from '../src/schemas/auth.js';
+import { randomBytes } from 'node:crypto';
+import { MemoryStore } from '@fastify/session';
+
+function testSession(secure = false) {
+  return {
+    secret: randomBytes(32).toString('hex'),
+    secure,
+    store: new MemoryStore(),
+  };
+}
 
 const fixture = BearSchema.array().parse(
   JSON.parse(
@@ -24,6 +34,7 @@ test('bear and comment routes use injected repositories without PostgreSQL', asy
   const bears = createMemoryBearRepository(fixture);
   const comments = createMemoryCommentRepository();
   const app = await buildApp({
+    session: testSession(),
     bears,
     comments,
     users: createMemoryUserRepository(),
@@ -80,6 +91,7 @@ test('bear and comment routes use injected repositories without PostgreSQL', asy
 test('name filters and comment cursors work through the HTTP interface', async (t) => {
   const comments = createMemoryCommentRepository();
   const app = await buildApp({
+    session: testSession(),
     bears: createMemoryBearRepository(fixture),
     comments,
     users: createMemoryUserRepository(),
@@ -136,6 +148,7 @@ test('name filters and comment cursors work through the HTTP interface', async (
 test('the third report hides the comment and later reports keep the timestamp', async (t) => {
   const comments = createMemoryCommentRepository();
   const app = await buildApp({
+    session: testSession(),
     bears: createMemoryBearRepository(fixture),
     comments,
     users: createMemoryUserRepository(),
@@ -177,6 +190,7 @@ test('registration validates input, hashes the exact password and reports a dupl
   const accounts = new Map<string, PublicUser & { passwordHash: string }>();
   const comments = createMemoryCommentRepository();
   const app = await buildApp({
+    session: testSession(),
     bears: createMemoryBearRepository(fixture),
     comments,
     users: createMemoryUserRepository(accounts),
@@ -217,4 +231,88 @@ test('registration validates input, hashes the exact password and reports a dupl
   );
   assert.equal(duplicate.json().status, 409);
   assert.equal(accounts.size, 1);
+});
+
+test('login rotates the credential, /me restores it and logout revokes it', async (t) => {
+  const comments = createMemoryCommentRepository();
+  const app = await buildApp({
+    session: testSession(true),
+    trustedProxyIp: '127.0.0.1',
+    bears: createMemoryBearRepository(fixture),
+    comments,
+    users: createMemoryUserRepository(),
+    reportComment: createReportComment((operation) => operation(comments)),
+    checkDatabase: () => Promise.resolve(),
+    logger: false,
+  });
+  t.after(() => app.close());
+  const payload = {
+    email: 'reader@example.test',
+    password: 'a long test password',
+  };
+  const saved = await app.inject({
+    method: 'POST',
+    url: '/api/auth/register',
+    payload,
+  });
+  assert.equal(saved.statusCode, 201);
+  const https = { 'x-forwarded-proto': 'https' };
+  const me = (cookie?: string) =>
+    app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: cookie ? { ...https, cookie } : https,
+    });
+  const login = (credentials: typeof payload, cookie?: string) =>
+    app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: credentials,
+      headers: cookie ? { ...https, cookie } : https,
+    });
+  function issuedCookie(response: { headers: Record<string, unknown> }) {
+    const header = response.headers['set-cookie'];
+    assert.equal(typeof header, 'string');
+    const raw = String(header);
+    for (const flag of ['Path=/', 'HttpOnly', 'Secure', 'SameSite=Lax'])
+      assert.ok(raw.split('; ').includes(flag));
+    return raw.split(';')[0];
+  }
+  const anonymous = await me();
+  assert.equal(anonymous.statusCode, 401);
+  assert.match(
+    String(anonymous.headers['content-type']),
+    /^application\/problem\+json/
+  );
+  const wrong = await login({ ...payload, password: 'incorrect' });
+  const unknown = await login({ ...payload, email: 'missing@example.test' });
+  assert.equal(wrong.statusCode, 401);
+  assert.equal(unknown.statusCode, 401);
+  assert.equal(wrong.json().detail, unknown.json().detail);
+  const http = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    payload,
+  });
+  assert.equal(http.statusCode, 400);
+  const first = await login(payload);
+  assert.equal(first.statusCode, 200);
+  assert.deepEqual(first.json(), saved.json());
+  const oldCookie = issuedCookie(first);
+  const second = await login(payload, oldCookie);
+  assert.equal(second.statusCode, 200);
+  const currentCookie = issuedCookie(second);
+  assert.notEqual(currentCookie, oldCookie);
+  assert.equal((await me(oldCookie)).statusCode, 401);
+  const active = await me(currentCookie);
+  assert.equal(active.statusCode, 200);
+  assert.deepEqual(active.json(), saved.json());
+  const logout = await app.inject({
+    method: 'POST',
+    url: '/api/auth/logout',
+    headers: { ...https, cookie: currentCookie },
+  });
+  assert.equal(logout.statusCode, 204);
+  assert.equal(logout.body, '');
+  assert.equal((await me(currentCookie)).statusCode, 401);
 });

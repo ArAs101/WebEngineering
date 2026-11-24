@@ -270,3 +270,12 @@ audio {
 .comment-container li p:nth-child(2) {
   flex: 5;
 }
+
+.account-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+}

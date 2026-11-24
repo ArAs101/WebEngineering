@@ -38,6 +38,12 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class AuthenticationError extends AppError {
+  readonly statusCode = 401;
+  readonly problemType = `${PROBLEM_BASE_URI}/authentication`;
+  readonly title = 'Authentication required';
+}
+
 export class EmailAlreadyRegisteredError extends AppError {
   readonly statusCode = 409;
   readonly problemType = `${PROBLEM_BASE_URI}/email-already-registered`;

@@ -26,6 +26,13 @@ import { ProblemSchema } from './schemas/problem.js';
 import type { ReportComment } from './services/report-comment.js';
 import { authRoutes } from './routes/auth.js';
 import type { UserRepository } from './repositories/user-repository.js';
+import cookie from '@fastify/cookie';
+import sessionPlugin, { type SessionStore } from '@fastify/session';
+import {
+  sessionCookieName,
+  sessionCookieOptions,
+  sessionLifetimeMs,
+} from './services/session.js';
 
 const PROBLEM_BASE_URI = 'https://bears.example/problems';
 
@@ -89,6 +96,8 @@ function toProblem(error: Error, requestId: string): Problem {
 interface AppOptions {
   bears: BearRepository;
   comments: CommentRepository;
+  session: { secret: string; secure: boolean; store: SessionStore };
+  trustedProxyIp?: string;
   users: UserRepository;
   reportComment: ReportComment;
   checkDatabase: () => Promise<void>;
@@ -101,6 +110,7 @@ interface AppOptions {
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: options.logger ?? true,
+    trustProxy: options.trustedProxyIp ?? false,
     requestIdHeader: 'x-request-id',
     genReqId: () => randomUUID(),
   });
@@ -154,8 +164,21 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     methods: ['GET', 'POST', 'DELETE'],
     allowedHeaders: ['content-type', 'x-request-id'],
     exposedHeaders: ['location', 'x-request-id'],
-    credentials: false,
+    credentials: true,
     maxAge: 600,
+  });
+
+  await app.register(cookie);
+  await app.register(sessionPlugin, {
+    secret: options.session.secret,
+    store: options.session.store,
+    cookieName: sessionCookieName,
+    cookie: {
+      ...sessionCookieOptions(options.session.secure),
+      maxAge: sessionLifetimeMs,
+    },
+    saveUninitialized: false,
+    rolling: false,
   });
 
   await app.register(swagger, {
@@ -203,10 +226,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         spec.paths?.['/api/comments/{commentId}']?.delete?.responses,
         spec.paths?.['/api/comments/{commentId}/report']?.post?.responses,
         spec.paths?.['/api/auth/register']?.post?.responses,
+        spec.paths?.['/api/auth/login']?.post?.responses,
+        spec.paths?.['/api/auth/logout']?.post?.responses,
+        spec.paths?.['/api/auth/me']?.get?.responses,
       ];
 
       for (const responses of responseGroups) {
-        for (const status of ['400', '404', '409', '500', '503']) {
+        for (const status of ['400', '401', '404', '409', '500', '503']) {
           const response = responses?.[status];
 
           if (
@@ -251,6 +277,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         noContentResponse.description = 'Comment deleted successfully';
 
         delete noContentResponse.content;
+      }
+
+      const logoutResponse =
+        spec.paths?.['/api/auth/logout']?.post?.responses?.['204'];
+      if (logoutResponse !== undefined && !('$ref' in logoutResponse)) {
+        logoutResponse.description = 'Logged out';
+        delete logoutResponse.content;
       }
 
       return spec;
@@ -314,7 +347,10 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     }
   );
 
-  await app.register(authRoutes, { users: options.users });
+  await app.register(authRoutes, {
+    users: options.users,
+    secureCookie: options.session.secure,
+  });
   await app.register(bearRoutes, { bears: options.bears });
   await app.register(commentRoutes, {
     bears: options.bears,

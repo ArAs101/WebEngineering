@@ -12,6 +12,17 @@ export function createMemoryUserRepository(
   accounts = new Map<string, PublicUser & { passwordHash: string }>()
 ): UserRepository {
   return {
+    findByEmail(email) {
+      return Promise.resolve(accounts.get(email) ?? null);
+    },
+    findById(id) {
+      const account = [...accounts.values()].find((item) => item.id === id);
+      return Promise.resolve(
+        account === undefined
+          ? null
+          : { id: account.id, email: account.email, role: account.role }
+      );
+    },
     create(email, passwordHash) {
       if (accounts.has(email)) {
         return Promise.resolve(null);

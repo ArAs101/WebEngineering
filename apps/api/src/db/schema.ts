@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  jsonb,
   index,
   integer,
   pgEnum,
@@ -9,6 +10,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { Session } from 'fastify';
 
 export const userRole = pgEnum('user_role', ['user', 'moderator']);
 
@@ -21,6 +23,16 @@ export const users = pgTable('users', {
     .notNull()
     .defaultNow(),
 });
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: text().primaryKey(),
+    data: jsonb().$type<Session>().notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [index('sessions_expires_idx').on(table.expiresAt)]
+);
 
 export const bears = pgTable('bears', {
   id: text().primaryKey(),

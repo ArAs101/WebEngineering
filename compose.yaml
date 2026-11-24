@@ -22,6 +22,9 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       PORT: "3000"
+      NODE_ENV: ${NODE_ENV:-development}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      TRUSTED_PROXY_IP:
       DATABASE_URL: "postgresql://bears:bears_dev@db:5432/bears"
     ports:
       - "127.0.0.1:3000:3000"

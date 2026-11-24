@@ -493,4 +493,15 @@ Using the single-column index, the sorting step processes 12,500 matching rows t
 Each run creates a fresh comment and sends 50 concurrent reports to the same comment ID. The script reads the final `report_count` directly from PostgreSQL. In the naive version, concurrent requests can read the same count and overwrite one another’s increments. The fixed version reads the row with `SELECT FOR UPDATE` and saves the increment within the same transaction.
 
 
+### ADR 001 – PostgreSQL sessions for browser login
+- **Status:** Accepted for Playground 6, Task 2.
+- **Context:** The React client needs a persistent login and immediate logout.
+- **Context:** The API already uses PostgreSQL and can share it across instances.
+- **Option A:** A signed cookie identifies a session stored in PostgreSQL.
+- **Option B:** A self-contained JWT carries claims until expiry and requires extra state for immediate revocation.
+- **Decision:** Use option A with an eight-hour lifetime and a fresh credential on each login.
+- **Consequence:** The server stores the user ID and checks session expiry on each lookup.
+- **Consequence:** Logout deletes the session row, so a saved copy of the cookie also loses access.
+- **Consequence:** Requests with a session require PostgreSQL and production uses an HttpOnly, Secure, SameSite=Lax cookie at Path=/.
+
 <p>© 2026 Leon Freudenthaler (Hochschule Campus Wien). All rights reversed.</p>
