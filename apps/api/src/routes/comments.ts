@@ -1,9 +1,9 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
-import { NotFoundError, ValidationError } from '../errors.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../errors.js';
 import { BearId } from '../schemas/bear.js';
-import { CommentSchema, NewCommentSchema } from '../schemas/comment.js';
+import { CommentViewSchema, NewCommentSchema } from '../schemas/comment.js';
 import type { BearRepository } from '../repositories/bear-repository.js';
 import type { CommentRepository } from '../repositories/comment-repository.js';
 import { ProblemSchema } from '../schemas/problem.js';
@@ -14,7 +14,12 @@ import {
 import { CommentReportStatusSchema } from '../schemas/comment-report.js';
 import type { ReportComment } from '../services/report-comment.js';
 
+import type { UserRepository } from '../repositories/user-repository.js';
+import { getSessionUser, requireSessionUser } from '../services/session.js';
+import { canDeleteComment, viewComment } from '../services/comment-policy.js';
+
 interface CommentRoutesOptions {
+  users: UserRepository;
   bears: BearRepository;
   comments: CommentRepository;
   reportComment: ReportComment;
@@ -22,8 +27,12 @@ interface CommentRoutesOptions {
 
 export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
   app,
-  { bears, comments, reportComment }
+  { bears, comments, reportComment, users }
 ) => {
+  app.addHook('onRequest', (_request, reply, done) => {
+    void reply.header('Cache-Control', 'private, no-store');
+    done();
+  });
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
 
   // GET /api/bears/:id/comments
@@ -43,7 +52,7 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         }),
         response: {
           200: z.object({
-            items: CommentSchema.array(),
+            items: CommentViewSchema.array(),
             nextCursor: z.string().nullable(),
           }),
           400: ProblemSchema,
@@ -68,12 +77,13 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         throw new NotFoundError('Bear');
       }
 
+      const viewer = await getSessionUser(request.session, users);
       const { limit, cursor } = request.query;
       const rows = await comments.listPage(parsedId.data, limit + 1, cursor);
       const items = rows.slice(0, limit);
 
       return {
-        items,
+        items: items.map((comment) => viewComment(comment, viewer)),
         nextCursor:
           rows.length > limit
             ? encodeCommentCursor(items[items.length - 1])
@@ -90,7 +100,7 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
       schema: {
         tags: ['Comments'],
         summary: 'Create a comment for a bear',
-        description: 'Creates a new comment for an existing bear.',
+        description: 'Creates a comment for the signed-in user.',
         params: z.object({
           id: z
             .string()
@@ -98,14 +108,16 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         }),
         body: NewCommentSchema,
         response: {
-          201: CommentSchema,
+          201: CommentViewSchema,
           400: ProblemSchema,
+          401: ProblemSchema,
           404: ProblemSchema,
           500: ProblemSchema,
         },
       },
     },
     async (request, reply) => {
+      const viewer = await requireSessionUser(request.session, users);
       const parsedId = BearId.safeParse(request.params.id);
       const parsedBody = NewCommentSchema.safeParse(request.body);
 
@@ -132,12 +144,16 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         throw new NotFoundError('Bear');
       }
 
-      const comment = await comments.create(parsedId.data, parsedBody.data);
+      const comment = await comments.create(
+        parsedId.data,
+        parsedBody.data,
+        viewer.id
+      );
 
       return await reply
         .code(201)
         .header('Location', `/api/comments/${comment.id}`)
-        .send(comment);
+        .send(viewComment(comment, viewer));
     }
   );
 
@@ -148,19 +164,22 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
       schema: {
         tags: ['Comments'],
         summary: 'Delete a comment',
-        description: 'Deletes an existing comment identified by its UUID.',
+        description: 'Only the author or a moderator can delete the comment.',
         params: z.object({
           commentId: z.string().describe('UUID of the comment to delete'),
         }),
         response: {
           204: z.undefined().describe('No Content'),
           400: ProblemSchema,
+          401: ProblemSchema,
+          403: ProblemSchema,
           404: ProblemSchema,
           500: ProblemSchema,
         },
       },
     },
     async (request, reply) => {
+      const viewer = await requireSessionUser(request.session, users);
       const parsedId = z.uuid().safeParse(request.params.commentId);
 
       if (!parsedId.success) {
@@ -172,7 +191,13 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         );
       }
 
-      if (!(await comments.remove(parsedId.data))) {
+      const result = await comments.removeIf(parsedId.data, (authorId) =>
+        canDeleteComment(viewer, authorId)
+      );
+      if (result === 'forbidden') {
+        throw new ForbiddenError('You cannot delete this comment.');
+      }
+      if (result === 'missing') {
         throw new NotFoundError('Comment');
       }
 

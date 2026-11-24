@@ -9,6 +9,7 @@ function toComment(row: typeof comments.$inferSelect): Comment {
     id: row.id,
     bearId: row.bearId,
     author: row.author,
+    authorId: row.authorId,
     text: row.text,
     createdAt: row.createdAt.toISOString(),
   };
@@ -41,25 +42,38 @@ export function createDrizzleCommentRepository(
       const rows = await db
         .select()
         .from(comments)
-        .where(and(eq(comments.bearId, bearId), afterCursor))
+        .where(
+          and(
+            eq(comments.bearId, bearId),
+            isNull(comments.hiddenAt),
+            afterCursor
+          )
+        )
         .orderBy(desc(comments.createdAt), desc(comments.id))
         .limit(limit);
 
       return rows.map(toComment);
     },
-    async create(bearId, data) {
+    async create(bearId, data, authorId) {
       const [row] = await db
         .insert(comments)
-        .values({ bearId, author: data.author, text: data.text })
+        .values({ bearId, authorId, author: data.author, text: data.text })
         .returning();
       return toComment(row);
     },
-    async remove(id) {
-      const rows = await db
-        .delete(comments)
-        .where(eq(comments.id, id))
-        .returning({ id: comments.id });
-      return rows.length === 1;
+    async removeIf(id, allowed) {
+      return await db.transaction(async (tx) => {
+        const [row] = await tx
+          .select({ authorId: comments.authorId })
+          .from(comments)
+          .where(eq(comments.id, id))
+          .for('update');
+        if (row === undefined) return 'missing';
+        if (!allowed(row.authorId)) return 'forbidden';
+
+        await tx.delete(comments).where(eq(comments.id, id));
+        return 'removed';
+      });
     },
   };
 }

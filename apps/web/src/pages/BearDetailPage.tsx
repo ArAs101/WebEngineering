@@ -5,15 +5,18 @@ import RelatedLinks from '../components/layout/RelatedLinks';
 import HighlightedText from '../components/search/HighlightedText';
 import CommentsSection from '../components/comments/CommentsSection';
 import { showBearPlaceholder } from '../scripts/bearService';
+import type { PublicUser } from '../scripts/authService';
 
 interface BearDetailPageProps {
   bearLoadState: BearLoadState;
   searchQuery: string;
+  user: PublicUser | null | undefined;
 }
 
 export default function BearDetailPage({
   bearLoadState,
   searchQuery,
+  user,
 }: BearDetailPageProps): ReactElement {
   const { bearId } = useParams<{ bearId: string }>();
   const listUrl =
@@ -85,11 +88,14 @@ export default function BearDetailPage({
         </p>
       </article>
 
-      <CommentsSection
-        key={bear.id}
-        bearId={bear.id}
-        searchQuery={searchQuery}
-      />
+      {user !== undefined && (
+        <CommentsSection
+          key={`${bear.id}:${user?.id ?? 'guest'}:${user?.role ?? ''}`}
+          signedIn={user !== null}
+          bearId={bear.id}
+          searchQuery={searchQuery}
+        />
+      )}
       <RelatedLinks />
     </>
   );

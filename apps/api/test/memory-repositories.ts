@@ -51,10 +51,13 @@ export function createMemoryBearRepository(fixture: Bear[]): BearRepository {
   };
 }
 
-export function createMemoryCommentRepository(): CommentRepository &
-  CommentReportRepository {
-  const comments = new Map<string, Comment>();
-  const reports = new Map<string, CommentReportStatus>();
+export function createMemoryCommentRepository(
+  initial: Comment[] = []
+): CommentRepository & CommentReportRepository {
+  const comments = new Map(initial.map((item) => [item.id, item]));
+  const reports = new Map<string, CommentReportStatus>(
+    initial.map(({ id }) => [id, { id, reportCount: 0, hiddenAt: null }])
+  );
 
   function isVisible(comment: Comment): boolean {
     return reports.get(comment.id)?.hiddenAt === null;
@@ -83,10 +86,11 @@ export function createMemoryCommentRepository(): CommentRepository &
 
       return Promise.resolve(items.slice(0, limit));
     },
-    create: (bearId, data) => {
+    create: (bearId, data, authorId) => {
       const comment: Comment = {
         id: randomUUID(),
         bearId,
+        authorId,
         author: data.author,
         text: data.text,
         createdAt: new Date().toISOString(),
@@ -99,9 +103,13 @@ export function createMemoryCommentRepository(): CommentRepository &
       });
       return Promise.resolve(comment);
     },
-    remove: (id) => {
+    removeIf: (id, allowed) => {
+      const row = comments.get(id);
+      if (row === undefined) return Promise.resolve('missing');
+      if (!allowed(row.authorId)) return Promise.resolve('forbidden');
+      comments.delete(id);
       reports.delete(id);
-      return Promise.resolve(comments.delete(id));
+      return Promise.resolve('removed');
     },
     find: (id) => Promise.resolve(reports.get(id) ?? null),
     save: (status) => {

@@ -44,6 +44,12 @@ export class AuthenticationError extends AppError {
   readonly title = 'Authentication required';
 }
 
+export class ForbiddenError extends AppError {
+  readonly statusCode = 403;
+  readonly problemType = `${PROBLEM_BASE_URI}/forbidden`;
+  readonly title = 'Forbidden';
+}
+
 export class EmailAlreadyRegisteredError extends AppError {
   readonly statusCode = 409;
   readonly problemType = `${PROBLEM_BASE_URI}/email-already-registered`;

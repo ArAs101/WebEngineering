@@ -173,6 +173,7 @@ export default function App(): ReactElement {
             path="/bears/:bearId"
             element={
               <BearDetailPage
+                user={user}
                 bearLoadState={bearLoadState}
                 searchQuery={searchQuery}
               />

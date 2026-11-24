@@ -12,10 +12,12 @@ import {
   type Comment,
 } from '../../scripts/commentService';
 import HighlightedText from '../search/HighlightedText';
+import { Link } from 'react-router';
 
 interface CommentsSectionProps {
   bearId: string;
   searchQuery: string;
+  signedIn: boolean;
 }
 
 function newestFirst(a: Comment, b: Comment): number {
@@ -30,6 +32,7 @@ function getErrorMessage(error: unknown): string {
 export default function CommentsSection({
   bearId,
   searchQuery,
+  signedIn,
 }: CommentsSectionProps): ReactElement {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
@@ -191,45 +194,53 @@ export default function CommentsSection({
         id={`comments-content-${bearId}`}
         hidden={!isOpen}
       >
-        <h3>Add comment</h3>
+        {signedIn ? (
+          <>
+            <h3>Add comment</h3>
 
-        <form className="comment-form" onSubmit={handleSubmit} noValidate>
-          <div className="flex-pair">
-            <label htmlFor="name">Your name:</label>
-            <input
-              type="text"
-              name="name"
-              id="name"
-              placeholder="Enter your name"
-              value={name}
-              onChange={handleNameChange}
-              maxLength={80}
-              required
-            />
-          </div>
+            <form className="comment-form" onSubmit={handleSubmit} noValidate>
+              <div className="flex-pair">
+                <label htmlFor="name">Display name</label>
+                <input
+                  type="text"
+                  name="name"
+                  id="name"
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={handleNameChange}
+                  maxLength={80}
+                  required
+                />
+              </div>
 
-          <div className="flex-pair">
-            <label htmlFor="comment">Your comment:</label>
-            <input
-              type="text"
-              name="comment"
-              id="comment"
-              placeholder="Enter your comment"
-              value={commentText}
-              onChange={handleCommentChange}
-              maxLength={2000}
-              required
-            />
-          </div>
+              <div className="flex-pair">
+                <label htmlFor="comment">Your comment:</label>
+                <input
+                  type="text"
+                  name="comment"
+                  id="comment"
+                  placeholder="Enter your comment"
+                  value={commentText}
+                  onChange={handleCommentChange}
+                  maxLength={2000}
+                  required
+                />
+              </div>
 
-          <div>
-            <input
-              type="submit"
-              value={isSubmitting ? 'Submitting...' : 'Submit comment'}
-              disabled={!canSubmit || isBusy}
-            />
-          </div>
-        </form>
+              <div>
+                <input
+                  type="submit"
+                  value={isSubmitting ? 'Submitting...' : 'Submit comment'}
+                  disabled={!canSubmit || isBusy}
+                />
+              </div>
+            </form>
+          </>
+        ) : (
+          <p>
+            <Link to="/login">Log in</Link> to add a comment.
+          </p>
+        )}
 
         <h3>Comments</h3>
 
@@ -252,15 +263,17 @@ export default function CommentsSection({
               <p>
                 <HighlightedText text={comment.text} query={searchQuery} />
               </p>
-              <button
-                type="button"
-                disabled={isBusy}
-                onClick={() => {
-                  void handleDelete(comment.id);
-                }}
-              >
-                {deletingId === comment.id ? 'Deleting...' : 'Delete'}
-              </button>
+              {comment.canDelete && (
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => {
+                    void handleDelete(comment.id);
+                  }}
+                >
+                  {deletingId === comment.id ? 'Deleting...' : 'Delete'}
+                </button>
+              )}
             </li>
           ))}
         </ul>

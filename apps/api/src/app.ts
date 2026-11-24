@@ -232,7 +232,15 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       ];
 
       for (const responses of responseGroups) {
-        for (const status of ['400', '401', '404', '409', '500', '503']) {
+        for (const status of [
+          '400',
+          '401',
+          '403',
+          '404',
+          '409',
+          '500',
+          '503',
+        ]) {
           const response = responses?.[status];
 
           if (
@@ -356,6 +364,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     bears: options.bears,
     comments: options.comments,
     reportComment: options.reportComment,
+    users: options.users,
   });
   return await app;
 }

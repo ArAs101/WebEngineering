@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { createPool } from '../src/db/pool.js';
 import { readEnv } from '../src/env.js';
-import { CommentSchema } from '../src/schemas/comment.js';
 
 const mode = process.argv[2];
 assert.ok(
@@ -16,17 +15,11 @@ const pool = createPool(DATABASE_URL);
 let commentId: string | undefined;
 
 try {
-  const created = await fetch(`${origin}/api/bears/ursus-arctos/comments`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      author: 'Report experiment',
-      text: 'Temporary test comment',
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  assert.equal(created.status, 201, 'Start the API and seed the bears first.');
-  commentId = CommentSchema.parse(await created.json()).id;
+  const created = await pool.query<{ id: string }>(
+    'INSERT INTO comments (bear_id, author, text) VALUES ($1, $2, $3) RETURNING id',
+    ['ursus-arctos', 'Report experiment', 'Temporary test comment']
+  );
+  commentId = created.rows[0].id;
   const reportUrl = `${origin}/api/comments/${commentId}/report`;
 
   const results = await Promise.allSettled(
@@ -75,15 +68,7 @@ try {
 } finally {
   try {
     if (commentId !== undefined) {
-      const removed = await fetch(`${origin}/api/comments/${commentId}`, {
-        method: 'DELETE',
-        signal: AbortSignal.timeout(15_000),
-      });
-      assert.equal(
-        removed.status,
-        204,
-        'Could not remove the temporary test comment.'
-      );
+      await pool.query('DELETE FROM comments WHERE id = $1', [commentId]);
     }
   } finally {
     await pool.end();

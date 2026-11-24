@@ -52,6 +52,9 @@ export const comments = pgTable(
     bearId: text('bear_id')
       .notNull()
       .references(() => bears.id, { onDelete: 'cascade' }),
+    authorId: uuid('author_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     author: text().notNull(),
     text: text().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, precision: 3 })

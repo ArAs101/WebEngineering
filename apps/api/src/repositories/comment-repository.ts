@@ -8,6 +8,13 @@ export interface CommentRepository {
     limit: number,
     after?: CommentCursor
   ) => Promise<Comment[]>;
-  create: (bearId: string, data: NewComment) => Promise<Comment>;
-  remove: (commentId: string) => Promise<boolean>;
+  create: (
+    bearId: string,
+    data: NewComment,
+    authorId: string
+  ) => Promise<Comment>;
+  removeIf: (
+    commentId: string,
+    allowed: (authorId: string | null) => boolean
+  ) => Promise<'removed' | 'forbidden' | 'missing'>;
 }

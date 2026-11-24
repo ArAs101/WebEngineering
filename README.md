@@ -504,4 +504,19 @@ Each run creates a fresh comment and sends 50 concurrent reports to the same com
 - **Consequence:** Logout deletes the session row, so a saved copy of the cookie also loses access.
 - **Consequence:** Requests with a session require PostgreSQL and production uses an HttpOnly, Secure, SameSite=Lax cookie at Path=/.
 
+
+### Task 3 in Playground 6 – Comment permissions
+
+Use Windows cmd with `T3_API=http://127.0.0.1:3000/api`. Log in to three local test accounts and save their cookie jars as `T3_AJ` (author), `T3_BJ` (other user) and `T3_MJ` (moderator). To seed the moderator, set `MODERATOR_EMAIL` and `MODERATOR_PASSWORD` and run `npm run db:seed:moderator -w apps/api`. Create two comments as the author and set `T3_C1` and `T3_C2` to their returned comment IDs.
+
+| Session | Windows cmd | Expected HTTP status |
+| --- | --- | --- |
+| Anonymous | `curl.exe -i -X DELETE "%T3_API%/comments/%T3_C1%"` | 401 |
+| Author | `curl.exe -i -b "%T3_AJ%" -X DELETE "%T3_API%/comments/%T3_C1%"` | 204 |
+| Other user | `curl.exe -i -b "%T3_BJ%" -X DELETE "%T3_API%/comments/%T3_C2%"` | 403 |
+| Moderator | `curl.exe -i -b "%T3_MJ%" -X DELETE "%T3_API%/comments/%T3_C2%"` | 204 |
+
+Existing comments retain their display name and have a null author ID. Only a moderator can delete those comments. For new comments the API records the account from the session and includes the viewer's `canDelete` permission in its response.
+
+
 <p>© 2026 Leon Freudenthaler (Hochschule Campus Wien). All rights reversed.</p>

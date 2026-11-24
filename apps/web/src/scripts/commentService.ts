@@ -4,6 +4,8 @@ import { apiUrl } from './apiUrl';
 export interface Comment {
   id: string;
   bearId: string;
+  authorId: string | null;
+  canDelete: boolean;
   author: string;
   text: string;
   createdAt: string;
@@ -29,6 +31,8 @@ function isComment(value: unknown): value is Comment {
   return (
     typeof comment.id === 'string' &&
     typeof comment.bearId === 'string' &&
+    (comment.authorId === null || typeof comment.authorId === 'string') &&
+    typeof comment.canDelete === 'boolean' &&
     typeof comment.author === 'string' &&
     typeof comment.text === 'string' &&
     typeof comment.createdAt === 'string'
@@ -48,7 +52,8 @@ export async function loadComments(
   const response = await fetch(
     apiUrl(
       `/api/bears/${encodeURIComponent(bearId)}/comments?${params.toString()}`
-    )
+    ),
+    { credentials: 'include' }
   );
 
   if (!response.ok) {
@@ -83,6 +88,7 @@ export async function addComment(
     apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments`),
     {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -108,6 +114,7 @@ export async function deleteComment(commentId: string): Promise<void> {
   const response = await fetch(
     apiUrl(`/api/comments/${encodeURIComponent(commentId)}`),
     {
+      credentials: 'include',
       method: 'DELETE',
     }
   );

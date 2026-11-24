@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { buildApp } from '../src/app.js';
 import { BearSchema } from '../src/schemas/bear.js';
-import { CommentSchema } from '../src/schemas/comment.js';
 import {
   createMemoryBearRepository,
   createMemoryCommentRepository,
@@ -11,10 +10,12 @@ import {
 } from './memory-repositories.js';
 import { CommentReportStatusSchema } from '../src/schemas/comment-report.js';
 import { createReportComment } from '../src/services/report-comment.js';
-import { verify } from 'argon2';
 import type { PublicUser } from '../src/schemas/auth.js';
-import { randomBytes } from 'node:crypto';
 import { MemoryStore } from '@fastify/session';
+import { CommentViewSchema, type Comment } from '../src/schemas/comment.js';
+import { hash, verify } from 'argon2';
+import type { FastifyInstance } from 'fastify';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 function testSession(secure = false) {
   return {
@@ -22,6 +23,22 @@ function testSession(secure = false) {
     secure,
     store: new MemoryStore(),
   };
+}
+
+async function loginCookie(
+  app: FastifyInstance,
+  email: string,
+  password: string
+): Promise<string> {
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    payload: { email, password },
+  });
+  assert.equal(response.statusCode, 200);
+  const header = response.headers['set-cookie'];
+  assert.equal(typeof header, 'string');
+  return String(header).split(';')[0];
 }
 
 const fixture = BearSchema.array().parse(
@@ -50,20 +67,39 @@ test('bear and comment routes use injected repositories without PostgreSQL', asy
   assert.equal((await app.inject('/api/bears/ursus-arctos')).statusCode, 200);
   assert.equal((await app.inject('/api/bears/unknown-bear')).statusCode, 404);
 
+  const account = {
+    email: 'reader@example.test',
+    password: 'a long test password',
+  };
+  const registered = await app.inject({
+    method: 'POST',
+    url: '/api/auth/register',
+    payload: account,
+  });
+  assert.equal(registered.statusCode, 201);
+  const cookie = await loginCookie(app, account.email, account.password);
   const path = '/api/bears/ursus-arctos/comments';
   const post = await app.inject({
     method: 'POST',
     url: path,
+    headers: { cookie },
     payload: { author: 'Test', text: 'A comment.' },
   });
   assert.equal(post.statusCode, 201);
-  const comment = CommentSchema.parse(post.json());
+  const comment = CommentViewSchema.parse(post.json());
+  assert.ok(comment.authorId);
+  assert.equal(comment.authorId, registered.json().id);
+  assert.equal(comment.canDelete, true);
   assert.equal(post.headers.location, `/api/comments/${comment.id}`);
 
-  const polarComment = await comments.create('ursus-maritimus', {
-    author: 'Test',
-    text: 'Another bear.',
-  });
+  const polarComment = await comments.create(
+    'ursus-maritimus',
+    {
+      author: 'Test',
+      text: 'Another bear.',
+    },
+    comment.authorId
+  );
   const combined = await comments.findByBearIds([
     'ursus-arctos',
     'ursus-maritimus',
@@ -75,11 +111,15 @@ test('bear and comment routes use injected repositories without PostgreSQL', asy
 
   const listComments = await app.inject(path);
   assert.equal(listComments.statusCode, 200);
-  assert.deepEqual(listComments.json(), { items: [comment], nextCursor: null });
+  assert.deepEqual(listComments.json(), {
+    items: [{ ...comment, canDelete: false }],
+    nextCursor: null,
+  });
 
   const remove = await app.inject({
     method: 'DELETE',
     url: `/api/comments/${comment.id}`,
+    headers: { cookie },
   });
   assert.equal(remove.statusCode, 204);
   assert.deepEqual((await app.inject(path)).json(), {
@@ -114,7 +154,11 @@ test('name filters and comment cursors work through the HTTP interface', async (
   const bearId = 'ursus-arctos';
   await Promise.all(
     Array.from({ length: 3 }, () =>
-      comments.create(bearId, { author: 'Test', text: 'Page test' })
+      comments.create(
+        bearId,
+        { author: 'Test', text: 'Page test' },
+        randomUUID()
+      )
     )
   );
 
@@ -159,10 +203,14 @@ test('the third report hides the comment and later reports keep the timestamp', 
   t.after(() => app.close());
 
   const bearId = 'ursus-arctos';
-  const { id } = await comments.create(bearId, {
-    author: 'Test',
-    text: 'Reported comment',
-  });
+  const { id } = await comments.create(
+    bearId,
+    {
+      author: 'Test',
+      text: 'Reported comment',
+    },
+    randomUUID()
+  );
   const listUrl = `/api/bears/${bearId}/comments`;
   const reportUrl = `/api/comments/${id}/report`;
   let hiddenAt: string | null = null;
@@ -315,4 +363,107 @@ test('login rotates the credential, /me restores it and logout revokes it', asyn
   assert.equal(logout.statusCode, 204);
   assert.equal(logout.body, '');
   assert.equal((await me(currentCookie)).statusCode, 401);
+});
+
+test('comment permissions match the session for authors, other users and moderators', async (t) => {
+  const bearId = 'ursus-arctos';
+  const legacy: Comment = {
+    id: randomUUID(),
+    bearId,
+    authorId: null,
+    author: 'Reader',
+    text: 'Comment from the old playground',
+    createdAt: new Date().toISOString(),
+  };
+  const comments = createMemoryCommentRepository([legacy]);
+  const password = randomBytes(24).toString('hex');
+  const passwordHash = await hash(password);
+  const accounts = new Map<string, PublicUser & { passwordHash: string }>();
+  for (const [name, role] of [
+    ['author', 'user'],
+    ['other', 'user'],
+    ['moderator', 'moderator'],
+  ] as const) {
+    const email = name + '@example.test';
+    accounts.set(email, { id: randomUUID(), email, role, passwordHash });
+  }
+  const app = await buildApp({
+    session: testSession(),
+    bears: createMemoryBearRepository(fixture),
+    comments,
+    users: createMemoryUserRepository(accounts),
+    reportComment: createReportComment((operation) => operation(comments)),
+    checkDatabase: () => Promise.resolve(),
+    logger: false,
+  });
+  t.after(() => app.close());
+  const path = `/api/bears/${bearId}/comments`;
+  const post = (payload: Record<string, unknown>, cookie?: string) =>
+    app.inject({
+      method: 'POST',
+      url: path,
+      payload,
+      headers: cookie ? { cookie } : {},
+    });
+  const remove = (id: string, cookie?: string) =>
+    app.inject({
+      method: 'DELETE',
+      url: `/api/comments/${id}`,
+      headers: cookie ? { cookie } : {},
+    });
+  const body = { author: 'Reader', text: 'A new comment' };
+  assert.equal((await post(body)).statusCode, 401);
+  const author = await loginCookie(app, 'author@example.test', password);
+  const other = await loginCookie(app, 'other@example.test', password);
+  const moderator = await loginCookie(app, 'moderator@example.test', password);
+  const authorId = accounts.get('author@example.test')?.id;
+  assert.ok(authorId);
+  assert.equal((await post({ ...body, authorId }, other)).statusCode, 400);
+  const makeComment = async () => {
+    const response = await post(body, author);
+    assert.equal(response.statusCode, 201);
+    const item = CommentViewSchema.parse(response.json());
+    assert.equal(item.authorId, authorId);
+    assert.equal(item.canDelete, true);
+    return item.id;
+  };
+  const first = await makeComment();
+  const second = await makeComment();
+  for (const [cookie, ownsNew, canManageOld] of [
+    [undefined, false, false],
+    [author, true, false],
+    [other, false, false],
+    [moderator, true, true],
+  ] as const) {
+    const res = await app.inject({
+      method: 'GET',
+      url: path,
+      headers: cookie ? { cookie } : {},
+    });
+    assert.equal(res.statusCode, 200);
+    assert.match(String(res.headers['cache-control']), /no-store/);
+    const items = CommentViewSchema.array().parse(res.json().items);
+    assert.equal(items.find((row) => row.id === first)?.canDelete, ownsNew);
+    assert.equal(
+      items.find((row) => row.id === legacy.id)?.canDelete,
+      canManageOld
+    );
+  }
+  const anonymous = await remove(first);
+  assert.equal(anonymous.statusCode, 401);
+  assert.match(
+    String(anonymous.headers['content-type']),
+    /^application\/problem\+json/
+  );
+  assert.equal((await remove(first, author)).statusCode, 204);
+  const forbidden = await remove(second, other);
+  assert.equal(forbidden.statusCode, 403);
+  assert.match(
+    String(forbidden.headers['content-type']),
+    /^application\/problem\+json/
+  );
+  assert.equal((await remove(second, moderator)).statusCode, 204);
+  assert.equal((await remove(legacy.id, author)).statusCode, 403);
+  assert.equal((await remove(legacy.id, moderator)).statusCode, 204);
+  assert.equal((await remove(second, moderator)).statusCode, 404);
 });
