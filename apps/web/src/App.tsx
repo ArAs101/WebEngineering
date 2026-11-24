@@ -13,6 +13,7 @@ import Navigation from './components/layout/Navigation';
 import Footer from './components/layout/Footer';
 import BearListPage from './pages/BearListPage';
 import BearDetailPage from './pages/BearDetailPage';
+import RegisterPage from './pages/RegisterPage';
 
 export default function App(): ReactElement {
   const [bearLoadState, setBearLoadState] = useState<BearLoadState>({
@@ -76,6 +77,8 @@ export default function App(): ReactElement {
       <main>
         <Routes>
           <Route path="/" element={<Navigate to="/bears" replace />} />
+
+          <Route path="/register" element={<RegisterPage />} />
 
           <Route
             path="/bears"

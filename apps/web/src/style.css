@@ -141,6 +141,23 @@ footer {
   margin-top: 10px;
 }
 
+.registration {
+  background-color: #def;
+}
+
+.registration form {
+  display: grid;
+  gap: 0.8rem;
+  max-width: 36rem;
+  margin: 0 auto 2rem;
+  font-size: 1.6rem;
+}
+
+.registration input, .registration button {
+  font: inherit;
+  padding: 0.6rem;
+}
+
 /* Table styling */
 
 table {

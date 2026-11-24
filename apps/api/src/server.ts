@@ -6,6 +6,7 @@ import { createDrizzleBearRepository } from './repositories/drizzle-bear-reposit
 import { createDrizzleCommentRepository } from './repositories/drizzle-comment-repository.js';
 import { createDrizzleCommentReportRepository } from './repositories/drizzle-comment-report-repository.js';
 import { createReportComment } from './services/report-comment.js';
+import { createDrizzleUserRepository } from './repositories/drizzle-user-repository.js';
 
 const env = readEnv();
 const pool = createPool(env.DATABASE_URL);
@@ -13,6 +14,7 @@ const db = createDatabase(pool);
 const app = await buildApp({
   bears: createDrizzleBearRepository(db),
   comments: createDrizzleCommentRepository(db),
+  users: createDrizzleUserRepository(db),
   reportComment: createReportComment(
     async (operation) =>
       await db.transaction(

@@ -3,11 +3,24 @@ import {
   check,
   index,
   integer,
+  pgEnum,
   pgTable,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+
+export const userRole = pgEnum('user_role', ['user', 'moderator']);
+
+export const users = pgTable('users', {
+  id: uuid().primaryKey().defaultRandom(),
+  email: text().notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  role: userRole().notNull().default('user'),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const bears = pgTable('bears', {
   id: text().primaryKey(),

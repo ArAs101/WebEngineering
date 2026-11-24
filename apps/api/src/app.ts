@@ -24,6 +24,8 @@ import type { Problem } from './schemas/problem.js';
 import { HealthSchema } from './schemas/health.js';
 import { ProblemSchema } from './schemas/problem.js';
 import type { ReportComment } from './services/report-comment.js';
+import { authRoutes } from './routes/auth.js';
+import type { UserRepository } from './repositories/user-repository.js';
 
 const PROBLEM_BASE_URI = 'https://bears.example/problems';
 
@@ -87,6 +89,7 @@ function toProblem(error: Error, requestId: string): Problem {
 interface AppOptions {
   bears: BearRepository;
   comments: CommentRepository;
+  users: UserRepository;
   reportComment: ReportComment;
   checkDatabase: () => Promise<void>;
   closeDatabase?: () => Promise<void>;
@@ -176,6 +179,10 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
           name: 'Comments',
           description: 'Comments associated with bears',
         },
+        {
+          name: 'Auth',
+          description: 'User registration',
+        },
       ],
     },
     transform: jsonSchemaTransform,
@@ -195,10 +202,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         spec.paths?.['/api/bears/{id}/comments']?.post?.responses,
         spec.paths?.['/api/comments/{commentId}']?.delete?.responses,
         spec.paths?.['/api/comments/{commentId}/report']?.post?.responses,
+        spec.paths?.['/api/auth/register']?.post?.responses,
       ];
 
       for (const responses of responseGroups) {
-        for (const status of ['400', '404', '500', '503']) {
+        for (const status of ['400', '404', '409', '500', '503']) {
           const response = responses?.[status];
 
           if (
@@ -306,6 +314,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     }
   );
 
+  await app.register(authRoutes, { users: options.users });
   await app.register(bearRoutes, { bears: options.bears });
   await app.register(commentRoutes, {
     bears: options.bears,

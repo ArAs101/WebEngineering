@@ -18,6 +18,9 @@ export default function Navigation({
           <Link to="/bears">Home</Link>
         </li>
         <li>
+          <Link to="/register">Register</Link>
+        </li>
+        <li>
           <a href="#">Our team</a>
         </li>
         <li>

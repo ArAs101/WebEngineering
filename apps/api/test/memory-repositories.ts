@@ -5,6 +5,24 @@ import type { Bear } from '../src/schemas/bear.js';
 import type { Comment } from '../src/schemas/comment.js';
 import type { CommentReportRepository } from '../src/repositories/comment-report-repository.js';
 import type { CommentReportStatus } from '../src/schemas/comment-report.js';
+import type { UserRepository } from '../src/repositories/user-repository.js';
+import type { PublicUser } from '../src/schemas/auth.js';
+
+export function createMemoryUserRepository(
+  accounts = new Map<string, PublicUser & { passwordHash: string }>()
+): UserRepository {
+  return {
+    create(email, passwordHash) {
+      if (accounts.has(email)) {
+        return Promise.resolve(null);
+      }
+
+      const user: PublicUser = { id: randomUUID(), email, role: 'user' };
+      accounts.set(email, { ...user, passwordHash });
+      return Promise.resolve(user);
+    },
+  };
+}
 
 export function createMemoryBearRepository(fixture: Bear[]): BearRepository {
   const bears = new Map(fixture.map((bear) => [bear.id, bear]));

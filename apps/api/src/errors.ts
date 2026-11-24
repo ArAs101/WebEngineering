@@ -38,6 +38,16 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class EmailAlreadyRegisteredError extends AppError {
+  readonly statusCode = 409;
+  readonly problemType = `${PROBLEM_BASE_URI}/email-already-registered`;
+  readonly title = 'Email already registered';
+
+  constructor() {
+    super('This email address is already registered.');
+  }
+}
+
 export class DatabaseUnavailableError extends AppError {
   readonly statusCode = 503;
   readonly problemType = `${PROBLEM_BASE_URI}/database-unavailable`;

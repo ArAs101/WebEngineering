@@ -7,9 +7,12 @@ import { CommentSchema } from '../src/schemas/comment.js';
 import {
   createMemoryBearRepository,
   createMemoryCommentRepository,
+  createMemoryUserRepository,
 } from './memory-repositories.js';
 import { CommentReportStatusSchema } from '../src/schemas/comment-report.js';
 import { createReportComment } from '../src/services/report-comment.js';
+import { verify } from 'argon2';
+import type { PublicUser } from '../src/schemas/auth.js';
 
 const fixture = BearSchema.array().parse(
   JSON.parse(
@@ -23,6 +26,7 @@ test('bear and comment routes use injected repositories without PostgreSQL', asy
   const app = await buildApp({
     bears,
     comments,
+    users: createMemoryUserRepository(),
     reportComment: createReportComment((operation) => operation(comments)),
     checkDatabase: () => Promise.resolve(),
     logger: false,
@@ -78,6 +82,7 @@ test('name filters and comment cursors work through the HTTP interface', async (
   const app = await buildApp({
     bears: createMemoryBearRepository(fixture),
     comments,
+    users: createMemoryUserRepository(),
     reportComment: createReportComment((operation) => operation(comments)),
     checkDatabase: () => Promise.resolve(),
     logger: false,
@@ -133,6 +138,7 @@ test('the third report hides the comment and later reports keep the timestamp', 
   const app = await buildApp({
     bears: createMemoryBearRepository(fixture),
     comments,
+    users: createMemoryUserRepository(),
     reportComment: createReportComment((operation) => operation(comments)),
     checkDatabase: () => Promise.resolve(),
     logger: false,
@@ -165,4 +171,50 @@ test('the third report hides the comment and later reports keep the timestamp', 
       assert.equal(report.hiddenAt, hiddenAt);
     }
   }
+});
+
+test('registration validates input, hashes the exact password and reports a duplicate', async (t) => {
+  const accounts = new Map<string, PublicUser & { passwordHash: string }>();
+  const comments = createMemoryCommentRepository();
+  const app = await buildApp({
+    bears: createMemoryBearRepository(fixture),
+    comments,
+    users: createMemoryUserRepository(accounts),
+    reportComment: createReportComment((operation) => operation(comments)),
+    checkDatabase: () => Promise.resolve(),
+    logger: false,
+  });
+  t.after(() => app.close());
+
+  const email = 'reader@example.test';
+  const password = ' ' + 'a'.repeat(10) + ' ';
+  const post = (payload: Record<string, unknown>) =>
+    app.inject({ method: 'POST', url: '/api/auth/register', payload });
+
+  for (const payload of [
+    { email: 'invalid', password },
+    { email, password: 'a'.repeat(11) },
+    { email, password: '🐻'.repeat(6) },
+    { email, password, role: 'moderator' },
+  ]) {
+    assert.equal((await post(payload)).statusCode, 400);
+  }
+  assert.equal(accounts.size, 0);
+
+  const response = await post({ email: email.toUpperCase(), password });
+  assert.equal(response.statusCode, 201);
+  const account = accounts.get(email);
+  assert.ok(account);
+  assert.match(account.passwordHash, /^\$argon2id\$/);
+  assert.ok(await verify(account.passwordHash, password));
+  assert.deepEqual(response.json(), { id: account.id, email, role: 'user' });
+
+  const duplicate = await post({ email, password });
+  assert.equal(duplicate.statusCode, 409);
+  assert.match(
+    String(duplicate.headers['content-type']),
+    /^application\/problem\+json/
+  );
+  assert.equal(duplicate.json().status, 409);
+  assert.equal(accounts.size, 1);
 });
