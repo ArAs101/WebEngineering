@@ -1,19 +1,17 @@
+import { existsSync } from 'node:fs';
+import { loadEnvFile } from 'node:process';
 import { defineConfig } from 'drizzle-kit';
-import { z } from 'zod';
+import { readDatabaseUrl } from './src/env';
 
-const databaseUrl = process.env.DATABASE_URL;
+const rootEnv = '../../.env';
+if (existsSync(rootEnv)) loadEnvFile(rootEnv);
+const hasDatabaseConfig =
+  process.env.DATABASE_URL !== undefined ||
+  process.env.POSTGRES_PASSWORD !== undefined;
 
 export default defineConfig({
   dialect: 'postgresql',
   schema: './src/db/schema.ts',
   out: './drizzle',
-  ...(databaseUrl === undefined
-    ? {}
-    : {
-        dbCredentials: {
-          url: z
-            .url({ protocol: /^postgres(?:ql)?$/, hostname: /.+/ })
-            .parse(databaseUrl),
-        },
-      }),
+  ...(hasDatabaseConfig ? { dbCredentials: { url: readDatabaseUrl() } } : {}),
 });

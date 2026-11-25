@@ -30,6 +30,11 @@ const app = await buildApp({
   ),
   appVersion: env.APP_VERSION,
   corsOrigins: env.CORS_ORIGINS,
+  limits: {
+    BODY_LIMIT_BYTES: env.BODY_LIMIT_BYTES,
+    AUTH_RATE_LIMIT_MAX: env.AUTH_RATE_LIMIT_MAX,
+    AUTH_RATE_LIMIT_WINDOW_MS: env.AUTH_RATE_LIMIT_WINDOW_MS,
+  },
   checkDatabase: async () => {
     await pool.query('SELECT 1');
   },

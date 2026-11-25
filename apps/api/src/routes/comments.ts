@@ -17,6 +17,7 @@ import type { ReportComment } from '../services/report-comment.js';
 import type { UserRepository } from '../repositories/user-repository.js';
 import { getSessionUser, requireSessionUser } from '../services/session.js';
 import { canDeleteComment, viewComment } from '../services/comment-policy.js';
+import { EmptyQuerySchema } from '../security.js';
 
 interface CommentRoutesOptions {
   users: UserRepository;
@@ -45,7 +46,7 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         description:
           'Returns a page of comments for an existing bear, newest first.',
         querystring: CommentsQuerySchema,
-        params: z.object({
+        params: z.strictObject({
           id: z
             .string()
             .describe('Normalized bear species ID, e.g. ursus-arctos'),
@@ -101,17 +102,19 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         tags: ['Comments'],
         summary: 'Create a comment for a bear',
         description: 'Creates a comment for the signed-in user.',
-        params: z.object({
+        params: z.strictObject({
           id: z
             .string()
             .describe('Normalized bear species ID, e.g. ursus-arctos'),
         }),
         body: NewCommentSchema,
+        querystring: EmptyQuerySchema,
         response: {
           201: CommentViewSchema,
           400: ProblemSchema,
           401: ProblemSchema,
           404: ProblemSchema,
+          413: ProblemSchema,
           500: ProblemSchema,
         },
       },
@@ -140,6 +143,8 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         throw new ValidationError(issues, 'The comment could not be accepted.');
       }
 
+      if (request.validationError !== undefined) throw request.validationError;
+
       if ((await bears.findById(parsedId.data)) === null) {
         throw new NotFoundError('Bear');
       }
@@ -165,9 +170,10 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
         tags: ['Comments'],
         summary: 'Delete a comment',
         description: 'Only the author or a moderator can delete the comment.',
-        params: z.object({
+        params: z.strictObject({
           commentId: z.string().describe('UUID of the comment to delete'),
         }),
+        querystring: EmptyQuerySchema,
         response: {
           204: z.undefined().describe('No Content'),
           400: ProblemSchema,
@@ -211,7 +217,8 @@ export const commentRoutes: FastifyPluginAsync<CommentRoutesOptions> = async (
       schema: {
         tags: ['Comments'],
         summary: 'Report an existing comment',
-        params: z.object({ commentId: z.uuid() }),
+        querystring: EmptyQuerySchema,
+        params: z.strictObject({ commentId: z.uuid() }),
         response: {
           200: CommentReportStatusSchema,
           400: ProblemSchema,

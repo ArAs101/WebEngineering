@@ -519,4 +519,13 @@ Use Windows cmd with `T3_API=http://127.0.0.1:3000/api`. Log in to three local t
 Existing comments retain their display name and have a null author ID. Only a moderator can delete those comments. For new comments the API records the account from the session and includes the viewer's `canDelete` permission in its response.
 
 
+### Task 4 in Playground 6 – API hardening
+
+Copy `.env.example` to `.env` in the project root and fill in independent, private values for `POSTGRES_PASSWORD` and `SESSION_SECRET` (at least 32 characters for the session secret). For an existing local database, run `docker compose exec db psql -U bears -d bears` and use `\password bears` to set the role password to the same value. The host API and Drizzle load the root file. Compose passes the database and session settings to the appropriate containers.
+
+Login and registration each accept 10 requests per client IP in 60 seconds by default. Excess requests return a 429 Problem with a `Retry-After` header in seconds. The counter is local to one API process. Request bodies default to 16 KiB. List each allowed browser origin explicitly in `CORS_ORIGINS`, including its port when applicable.
+
+Run `npm run test:limits -w apps/api` to check both limits, and `curl.exe -I http://127.0.0.1:3000/health` to inspect the headers. The CI workflow runs the API tests and scans the Git history with Gitleaks on pushes and pull requests.
+
+
 <p>© 2026 Leon Freudenthaler (Hochschule Campus Wien). All rights reversed.</p>

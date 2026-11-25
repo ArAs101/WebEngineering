@@ -25,3 +25,7 @@ build
 *.sw?
 
 coverage
+
+.env
+.env.*
+!.env.example

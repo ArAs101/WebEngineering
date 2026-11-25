@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import type { CommentCursor } from '../repositories/comment-repository.js';
 
-const CursorSchema = z.object({
+const CursorSchema = z.strictObject({
   createdAt: z.iso
     .datetime({ precision: 3 })
     .refine((value) => !value.startsWith('0000-')),
   id: z.uuid(),
 });
 
-export const CommentsQuerySchema = z.object({
+export const CommentsQuerySchema = z.strictObject({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   cursor: z
     .string()

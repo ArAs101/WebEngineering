@@ -19,6 +19,7 @@ import {
   sessionCookieName,
   sessionCookieOptions,
 } from '../services/session.js';
+import { EmptyQuerySchema } from '../security.js';
 
 export const authRoutes: FastifyPluginAsync<{
   users: UserRepository;
@@ -35,11 +36,15 @@ export const authRoutes: FastifyPluginAsync<{
   typedApp.post(
     '/api/auth/register',
     {
+      config: { rateLimit: {} },
       schema: {
         tags: ['Auth'],
+        querystring: EmptyQuerySchema,
         summary: 'Register a user',
         body: RegisterBodySchema,
         response: {
+          413: ProblemSchema,
+          429: ProblemSchema,
           201: PublicUserSchema,
           400: ProblemSchema,
           409: ProblemSchema,
@@ -64,11 +69,15 @@ export const authRoutes: FastifyPluginAsync<{
   typedApp.post(
     '/api/auth/login',
     {
+      config: { rateLimit: {} },
       schema: {
         tags: ['Auth'],
+        querystring: EmptyQuerySchema,
         summary: 'Log in',
         body: LoginBodySchema,
         response: {
+          413: ProblemSchema,
+          429: ProblemSchema,
           200: PublicUserSchema,
           400: ProblemSchema,
           401: ProblemSchema,
@@ -108,8 +117,10 @@ export const authRoutes: FastifyPluginAsync<{
     {
       schema: {
         tags: ['Auth'],
+        querystring: EmptyQuerySchema,
         summary: 'Get the logged-in user',
         response: {
+          400: ProblemSchema,
           200: PublicUserSchema,
           401: ProblemSchema,
           500: ProblemSchema,
@@ -131,8 +142,10 @@ export const authRoutes: FastifyPluginAsync<{
     {
       schema: {
         tags: ['Auth'],
+        querystring: EmptyQuerySchema,
         summary: 'Log out',
         response: {
+          400: ProblemSchema,
           204: z.undefined().describe('No Content'),
           500: ProblemSchema,
         },

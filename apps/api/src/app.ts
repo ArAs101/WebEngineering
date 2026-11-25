@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { STATUS_CODES } from 'node:http';
 import Fastify, { type FastifyInstance } from 'fastify';
-import cors from '@fastify/cors';
+import { z } from 'zod';
+import { LimitsSchema, type ApiLimits } from './env.js';
+import { EmptyQuerySchema, registerSecurity } from './security.js';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import {
@@ -34,6 +36,7 @@ import {
   sessionLifetimeMs,
 } from './services/session.js';
 
+const RequestIdSchema = z.uuid();
 const PROBLEM_BASE_URI = 'https://bears.example/problems';
 
 function toProblem(error: Error, requestId: string): Problem {
@@ -73,6 +76,19 @@ function toProblem(error: Error, requestId: string): Problem {
     };
   }
 
+  if (statusCode === 413 || statusCode === 429) {
+    const tooLarge = statusCode === 413;
+    return {
+      type: `${PROBLEM_BASE_URI}/${tooLarge ? 'body-too-large' : 'rate-limit'}`,
+      title: tooLarge ? 'Payload Too Large' : 'Too Many Requests',
+      status: statusCode,
+      detail: tooLarge
+        ? 'The request body exceeds the allowed size.'
+        : 'Try again after the interval in Retry-After.',
+      instance,
+    };
+  }
+
   if (statusCode >= 400 && statusCode < 500) {
     return {
       type: 'about:blank',
@@ -104,15 +120,21 @@ interface AppOptions {
   closeDatabase?: () => Promise<void>;
   appVersion?: string;
   corsOrigins?: string[];
+  limits?: ApiLimits;
   logger?: boolean;
 }
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
+  const limits = options.limits ?? LimitsSchema.parse({});
   const app = Fastify({
+    bodyLimit: limits.BODY_LIMIT_BYTES,
     logger: options.logger ?? true,
     trustProxy: options.trustedProxyIp ?? false,
-    requestIdHeader: 'x-request-id',
-    genReqId: () => randomUUID(),
+    requestIdHeader: false,
+    genReqId: (request) => {
+      const id = RequestIdSchema.safeParse(request.headers['x-request-id']);
+      return id.success ? id.data : randomUUID();
+    },
   });
 
   app.addHook('onClose', async () => {
@@ -159,14 +181,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     return reply.code(404).type('application/problem+json').send(problem);
   });
 
-  await app.register(cors, {
-    origin: options.corsOrigins ?? [],
-    methods: ['GET', 'POST', 'DELETE'],
-    allowedHeaders: ['content-type', 'x-request-id'],
-    exposedHeaders: ['location', 'x-request-id'],
-    credentials: true,
-    maxAge: 600,
-  });
+  await registerSecurity(
+    app,
+    options.corsOrigins ?? [],
+    options.session.secure,
+    limits
+  );
 
   await app.register(cookie);
   await app.register(sessionPlugin, {
@@ -238,6 +258,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
           '403',
           '404',
           '409',
+          '413',
+          '429',
           '500',
           '503',
         ]) {
@@ -257,6 +279,19 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
             response.content['application/problem+json'] = jsonContent;
             delete response.content['application/json'];
           }
+        }
+      }
+
+      for (const path of ['/api/auth/login', '/api/auth/register']) {
+        const limited = spec.paths?.[path]?.post?.responses?.['429'];
+        if (limited !== undefined && !('$ref' in limited)) {
+          limited.headers = {
+            ...limited.headers,
+            'Retry-After': {
+              description: 'Seconds until the next request can be accepted.',
+              schema: { type: 'integer', minimum: 1 },
+            },
+          };
         }
       }
 
@@ -300,6 +335,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   await app.register(swaggerUi, {
     routePrefix: '/api/docs',
+    staticCSP: true,
+    transformStaticCSP: (header) =>
+      options.session.secure
+        ? header
+        : header.replace('upgrade-insecure-requests;', ''),
     uiConfig: {
       docExpansion: 'list',
       deepLinking: true,
@@ -311,14 +351,17 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     '/health',
     {
       schema: {
+        querystring: EmptyQuerySchema,
         tags: ['Health'],
         summary: 'Get API health status',
         description:
           'Returns the API status, application version, and process uptime in seconds.',
         response: {
           200: HealthSchema,
+          400: ProblemSchema,
           500: ProblemSchema,
         },
+        queryString: EmptyQuerySchema,
       },
     },
     async () => ({
@@ -336,8 +379,10 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         summary: 'Check database readiness',
         response: {
           200: HealthSchema,
+          400: ProblemSchema,
           503: ProblemSchema,
         },
+        queryString: EmptyQuerySchema,
       },
     },
     async () => {

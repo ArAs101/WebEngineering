@@ -5,6 +5,7 @@ import { NotFoundError, ValidationError } from '../errors.js';
 import { BearId, BearSchema } from '../schemas/bear.js';
 import type { BearRepository } from '../repositories/bear-repository.js';
 import { ProblemSchema } from '../schemas/problem.js';
+import { EmptyQuerySchema } from '../security.js';
 
 export const bearRoutes: FastifyPluginAsync<{ bears: BearRepository }> = async (
   app,
@@ -20,7 +21,9 @@ export const bearRoutes: FastifyPluginAsync<{ bears: BearRepository }> = async (
         summary: 'List bears',
         description:
           'Returns the stored bear species, optionally filtered by name.',
-        querystring: z.object({ q: z.string().trim().max(100).optional() }),
+        querystring: z.strictObject({
+          q: z.string().trim().max(100).optional(),
+        }),
         response: {
           200: BearSchema.array(),
           400: ProblemSchema,
@@ -41,7 +44,8 @@ export const bearRoutes: FastifyPluginAsync<{ bears: BearRepository }> = async (
         tags: ['Bears'],
         summary: 'Get a bear by ID',
         description: 'Returns a single bear identified by its species ID.',
-        params: z.object({
+        querystring: EmptyQuerySchema,
+        params: z.strictObject({
           id: z
             .string()
             .describe(

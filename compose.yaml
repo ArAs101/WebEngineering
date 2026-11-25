@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: bears
       POSTGRES_USER: bears
-      POSTGRES_PASSWORD: bears_dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the project .env}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -24,8 +24,13 @@ services:
       PORT: "3000"
       NODE_ENV: ${NODE_ENV:-development}
       SESSION_SECRET: ${SESSION_SECRET:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the project .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      BODY_LIMIT_BYTES: ${BODY_LIMIT_BYTES:-16384}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-10}
+      AUTH_RATE_LIMIT_WINDOW_MS: ${AUTH_RATE_LIMIT_WINDOW_MS:-60000}
       TRUSTED_PROXY_IP:
-      DATABASE_URL: "postgresql://bears:bears_dev@db:5432/bears"
+      DATABASE_URL: "postgresql://bears@db:5432/bears"
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
