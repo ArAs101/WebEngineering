@@ -13,7 +13,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed:moderator": "node --env-file-if-exists=../../.env --import tsx scripts/seed-moderator.ts",
     "db:seed": "node --env-file-if-exists=../../.env --import tsx scripts/seed.ts",
-    "test": "node --import tsx --test test/routes.test.ts test/hardening.test.ts",
+    "test": "node --import tsx --test test/routes.test.ts test/hardening.test.ts && npm run test:security",
+    "test:security": "vitest run test/security.test.ts",
     "report:race": "node --env-file-if-exists=../../.env --import tsx scripts/report-race.ts",
     "test:limits": "node --import tsx --test --test-name-pattern=\"auth rate limits\" test/hardening.test.ts"
   },
@@ -36,6 +37,7 @@
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^5.1.2"
   }
 }

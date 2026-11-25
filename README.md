@@ -528,4 +528,39 @@ Login and registration each accept 10 requests per client IP in 60 seconds by de
 Run `npm run test:limits -w apps/api` to check both limits, and `curl.exe -I http://127.0.0.1:3000/health` to inspect the headers. The CI workflow runs the API tests and scans the Git history with Gitleaks on pushes and pull requests.
 
 
+### Task 5 in Playground 6 – Security review and attack test
+
+The following security review is based on the [OWASP Top 10:2025](https://top10.owasp.org/2025/).
+
+#### A01:2025 – Broken Access Control
+
+- **Risk:** An authenticated user could attempt to delete another user's comment by sending a DELETE request to `/api/comments/:commentId` with the ID of a comment they do not own. This is an example of an Insecure Direct Object Reference (IDOR).
+- **Mitigation:** The API obtains the authenticated user from the server-side session. The `canDeleteComment()` policy only permits the author or a moderator to delete a comment. The repository checks this permission before deleting the database record. The frontend also hides the delete option from unauthorized users, but the actual security enforcement takes place on the server.
+- **Residual risk:** New endpoints could introduce authorization vulnerabilities if the corresponding permission checks are omitted. A compromised moderator account could also be used to delete comments because moderators legitimately have extended permissions.
+
+#### A05:2025 – Injection
+
+- **Risk:** An attacker could submit malicious SQL through the `q` query parameter of `/api/bears` or store malicious HTML or JavaScript in a comment that is subsequently displayed to other users.
+- **Mitigation:** Drizzle ORM uses parameterised database queries, separating user-supplied values from SQL instructions. Zod validates request parameters, query parameters and request bodies. React renders comment authors and text as escaped text through the `HighlightedText` component instead of inserting raw HTML. Helmet additionally provides a Content Security Policy for API responses.
+- **Residual risk:** Future raw SQL queries or unsafe HTML rendering could reintroduce injection vulnerabilities. The current Nginx configuration does not explicitly apply a Content Security Policy to the frontend HTML document, so the API's CSP does not provide complete protection for the React application.
+
+#### A07:2025 – Authentication Failures
+
+- **Risk:** Attackers could attempt to access user accounts through brute-force attacks, credential stuffing or stolen session credentials.
+- **Mitigation:** Passwords are hashed using Argon2id, and registration requires at least 12 characters. Login and registration are rate-limited to 10 requests per IP address per minute by default. Sessions are regenerated upon successful login, stored server-side in PostgreSQL and invalidated on logout. Session cookies use HttpOnly and SameSite=Lax, as well as Secure in production.
+- **Residual risk:** Users may still choose predictable or previously compromised passwords. Distributed attacks can bypass per-IP rate limits, and multi-factor authentication is not implemented. Stolen session credentials may remain usable until the session expires or is invalidated.
+
+#### Automated attack test – IDOR
+
+The automated Vitest test in `apps/api/test/security.test.ts` simulates an IDOR attack using Fastify's `inject()` method.
+
+Two separate user accounts are registered and authenticated. The first user creates a comment, and the second user attempts to delete it directly through the API using its comment ID.
+
+The expected result is HTTP 403 Forbidden. The test subsequently verifies that the comment still exists and that its original author can successfully delete it with HTTP 204 No Content.
+
+The test uses in-memory repositories and sessions and therefore does not require a running PostgreSQL database. It verifies the API's authorization logic, but not the production database implementation.
+
+Run the attack test independently using `npm run test:security -w apps/api`. It is also included in the regular `npm test` command executed by the CI pipeline.
+
+
 <p>© 2026 Leon Freudenthaler (Hochschule Campus Wien). All rights reversed.</p>
